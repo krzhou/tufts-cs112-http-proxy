@@ -16,7 +16,7 @@
 EXECUTABLES = proxy tcpclient
 
 # Tests to build using "make test".
-TESTS = test_logger test_sock_buf
+TESTS = test_logger test_sock_buf test_cache
 
 # Custom headers (.h files) in your directory.
 INCLUDES =
@@ -85,4 +85,7 @@ tcpclient: tcpclient.o
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 test_sock_buf: test_sock_buf.o sock_buf.o
+	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+
+test_cache: test_cache.o
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
