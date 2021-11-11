@@ -57,3 +57,4 @@ tcpclient
 
 # Tests
 test_logger
+test_sock_buf
