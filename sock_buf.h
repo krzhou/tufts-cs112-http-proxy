@@ -44,7 +44,17 @@ int sock_buf_arr_clear(void);
  * @return int Number of socket message buffer added, i.e. 1 if succeeds; 0
  * otherwise.
  */
-int sock_buf_add(int fd);
+int sock_buf_add_client(int fd);
+
+/**
+ * @brief Add socket message buffer of the given FD.
+ * 
+ * @param fd FD for socket.
+ * @return int Number of socket message buffer added, i.e. 1 if succeeds; 0
+ * otherwise.
+ */
+int sock_buf_add_server(int fd, int client);
+
 
 /**
  * @brief Remove socket message buffer of the given FD.

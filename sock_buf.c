@@ -13,6 +13,7 @@
 
 #include "sock_buf.h"
 #include <sys/select.h>
+#include <string.h>
 
 static struct sock_buf* sock_buf_arr[FD_SETSIZE];
 
@@ -26,7 +27,6 @@ int sock_buf_arr_init(void)
     for (int i = 0; i < FD_SETSIZE; ++i) {
         sock_buf_arr[i] = NULL;
     }
-    /* TODO */
     return 0;
 }
 
@@ -37,7 +37,10 @@ int sock_buf_arr_init(void)
  */
 int sock_buf_arr_clear(void)
 {
-    /* TODO */
+    for (int i = 0; i < FD_SETSIZE; ++i) {
+        
+        sock_buf_rm(i);
+    }
     return 0;
 }
 
@@ -48,11 +51,40 @@ int sock_buf_arr_clear(void)
  * @return int Number of socket message buffer added, i.e. 1 if succeeds; 0
  * otherwise.
  */
-int sock_buf_add(int fd)
+int sock_buf_add_client(int fd)
 {
     /* TODO */
-    (void)fd;
-    return 0;
+    if(sock_buf_arr[fd]!=NULL){
+        return 0;
+    }
+    else{
+        sock_buf_arr[fd]=(struct sock_buf*) malloc(sizeof(struct sock_buf));
+        bzero(sock_buf_arr[fd],sizeof(struct sock_buf));
+        
+        return 1;
+    }
+    
+}
+
+/**
+ * @brief Add socket message buffer of the given FD.
+ * 
+ * @param fd FD for socket.
+ * @return int Number of socket message buffer added, i.e. 1 if succeeds; 0
+ * otherwise.
+ */
+int sock_buf_add_server(int fd,int client)
+{
+    /* TODO */
+    if(sock_buf_arr[fd]!=NULL||sock_buf_arr[client]==NULL){
+        return 0;
+    }
+    else{
+        sock_buf_arr[fd]=(struct sock_buf*) malloc(sizeof(struct sock_buf));
+        bzero(sock_buf_arr[fd],sizeof(struct sock_buf));
+        sock_buf_arr[fd]->client = client;
+        return 1;
+    }
 }
 
 /**
@@ -65,8 +97,15 @@ int sock_buf_add(int fd)
 int sock_buf_rm(int fd)
 {
     /* TODO */
-    (void)fd;
-    return 0;
+    if(sock_buf_arr[fd]==NULL){
+        return 0;
+    }
+    else{
+        free(sock_buf_arr[fd]->msg);
+        free(sock_buf_arr[fd]);
+        sock_buf_arr[fd]=NULL;
+        return 1;
+    }
 }
 
 /**
@@ -79,6 +118,5 @@ int sock_buf_rm(int fd)
 struct sock_buf* sock_buf_get(int fd)
 {
     /* TODO */
-    (void)fd;
-    return 0;
+    return sock_buf_arr[fd];
 }
