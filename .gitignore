@@ -53,6 +53,7 @@ dkms.conf
 
 # Executables
 proxy
+tcpclient
 
 # Tests
 test_logger
