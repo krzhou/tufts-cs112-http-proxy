@@ -24,23 +24,21 @@ int cache_init(int capacity);
 
 /**
  * Free the cache.
- *
- * @return 0 on success; -1 otherwise.
  */
-int cache_clear(void);
+void cache_clear(void);
 
 /**
  * Put the given element (key, val, ttl) into cache.
  *
  * @param key Key of the element to be put, non-null.
  * @param val Value of the element to be put, non-null.
- * @param len Byte size of val.
+ * @param val_len Byte size of val.
  * @param max_age Time-to-live of the element in seconds, >= 0.
  * @return Number of elements put into cache.
  */
 int cache_put(const char* key,
               const char* val,
-              const int len,
+              const int val_len,
               const int max_age);
 
 /**
@@ -58,7 +56,7 @@ int cache_put(const char* key,
  */
 int cache_get(const char* key,
               char** out_val,
-              int* out_len,
+              int* out_val_len,
               int* out_age);
 
 #endif /* CACHE_H */
