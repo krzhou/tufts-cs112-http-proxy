@@ -12,6 +12,8 @@
 **************************************************************/
 
 #include "logger.h"
+#include "cache.h"
+#include "sock_buf.h"
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <signal.h>
@@ -87,12 +89,12 @@ void init_proxy(void)
     FD_ZERO(&active_fd_set);
     FD_SET(listen_sock, &active_fd_set);
 
-    /**
-     * TODO:
-     * Init client buffer.
-     * Init server buffer.
-     * Init cache.
-     */
+    /* Init LRU cache. */
+    cache_init(10);
+
+    /* Init socket buffer array. */
+    sock_buf_arr_init();
+
 }
 
 /**
@@ -108,12 +110,11 @@ void clear_proxy(void)
     }
     close(listen_sock);
 
-    /**
-     * TODO:
-     * Free client buffer.
-     * Free server buffer.
-     * Free cache.
-     */
+    /* Free LRU cache. */
+    cache_clear();
+
+    /* Free socket buffer array. */
+    sock_buf_arr_clear();
 }
 
 /**
