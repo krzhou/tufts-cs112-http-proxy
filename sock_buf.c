@@ -12,10 +12,12 @@
 **************************************************************/
 
 #include "sock_buf.h"
-#include <sys/select.h>
+#include "logger.h"
+#include <stdlib.h>
 #include <string.h>
+#include <sys/select.h>
 
-static struct sock_buf* sock_buf_arr[FD_SETSIZE];
+static struct sock_buf *sock_buf_arr[FD_SETSIZE];
 
 /**
  * @brief Create an empty socket message buffer array.
@@ -38,10 +40,19 @@ int sock_buf_arr_init(void)
 int sock_buf_arr_clear(void)
 {
     for (int i = 0; i < FD_SETSIZE; ++i) {
-        
         sock_buf_rm(i);
     }
     return 0;
+}
+
+/**
+ * @brief Check whether FD is valid, i.e. 0 <= FD < FD_SETSIZE.
+ *
+ * @param fd FD to check.
+ * @return int 1 if valid; 0 otherwise.
+ */
+int is_valid_fd(int fd) {
+    return 0 <= fd && fd < FD_SETSIZE;
 }
 
 /**
@@ -53,17 +64,23 @@ int sock_buf_arr_clear(void)
  */
 int sock_buf_add_client(int fd)
 {
-    /* TODO */
-    if(sock_buf_arr[fd]!=NULL){
+    struct sock_buf* new_sock_buf = NULL;
+
+    if (!is_valid_fd(fd) || sock_buf_arr[fd] != NULL) {
         return 0;
     }
-    else{
-        sock_buf_arr[fd]=(struct sock_buf*) malloc(sizeof(struct sock_buf));
-        bzero(sock_buf_arr[fd],sizeof(struct sock_buf));
-        
-        return 1;
+
+    new_sock_buf = (struct sock_buf*)malloc(sizeof(struct sock_buf));
+    if (new_sock_buf == NULL) {
+        PLOG_ERROR("malloc");
+        return 0;
     }
-    
+    new_sock_buf->msg = NULL;
+    new_sock_buf->len = 0;
+    new_sock_buf->client = -1;
+    new_sock_buf->last_access = 0;
+    sock_buf_arr[fd] = new_sock_buf;
+    return 1;
 }
 
 /**
@@ -73,18 +90,28 @@ int sock_buf_add_client(int fd)
  * @return int Number of socket message buffer added, i.e. 1 if succeeds; 0
  * otherwise.
  */
-int sock_buf_add_server(int fd,int client)
+int sock_buf_add_server(int fd, int client)
 {
-    /* TODO */
-    if(sock_buf_arr[fd]!=NULL||sock_buf_arr[client]==NULL){
+    struct sock_buf* new_sock_buf = NULL;
+
+    if(!is_valid_fd(fd) ||
+       !is_valid_fd(client) ||
+       sock_buf_arr[fd] != NULL ||
+       sock_buf_arr[client] == NULL) {
         return 0;
     }
-    else{
-        sock_buf_arr[fd]=(struct sock_buf*) malloc(sizeof(struct sock_buf));
-        bzero(sock_buf_arr[fd],sizeof(struct sock_buf));
-        sock_buf_arr[fd]->client = client;
-        return 1;
+
+    new_sock_buf = (struct sock_buf*) malloc(sizeof(struct sock_buf));
+    if (new_sock_buf == NULL) {
+        PLOG_ERROR("malloc");
+        return 0;
     }
+    new_sock_buf->msg = NULL;
+    new_sock_buf->len = 0;
+    new_sock_buf->client = client;
+    new_sock_buf->last_access = 0;
+    sock_buf_arr[fd] = new_sock_buf;
+    return 1;
 }
 
 /**
@@ -96,16 +123,14 @@ int sock_buf_add_server(int fd,int client)
  */
 int sock_buf_rm(int fd)
 {
-    /* TODO */
-    if(sock_buf_arr[fd]==NULL){
+    if(!is_valid_fd(fd) || sock_buf_arr[fd] == NULL) {
         return 0;
     }
-    else{
-        free(sock_buf_arr[fd]->msg);
-        free(sock_buf_arr[fd]);
-        sock_buf_arr[fd]=NULL;
-        return 1;
-    }
+
+    free(sock_buf_arr[fd]->msg);
+    free(sock_buf_arr[fd]);
+    sock_buf_arr[fd] = NULL;
+    return 1;
 }
 
 /**
@@ -117,6 +142,8 @@ int sock_buf_rm(int fd)
  */
 struct sock_buf* sock_buf_get(int fd)
 {
-    /* TODO */
+    if (!is_valid_fd(fd)) {
+        return NULL;
+    }
     return sock_buf_arr[fd];
 }

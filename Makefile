@@ -84,7 +84,7 @@ test_logger: test_logger.o logger.o
 tcpclient: tcpclient.o
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
-test_sock_buf: test_sock_buf.o sock_buf.o
+test_sock_buf: test_sock_buf.o sock_buf.o logger.o
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 test_cache: test_cache.o
