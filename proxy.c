@@ -32,6 +32,7 @@ static int listen_port; /* Port that proxy listens on. */
 static int listen_sock; /* Listening socket of the proxy. */
 static fd_set active_fd_set; /* FD sets of all active sockets. */
 static fd_set read_fd_set;   /* FD sets of all sockets read to be read. */
+static int max_fd = 4; /* Largest used FD so far. */
 
 /**
  * @brief Initialzed a listening socket that listens on the given port.
@@ -147,6 +148,11 @@ void accept_client(void)
         return;
     }
 
+    /* Update upperbound of used FD for sockets. */
+    if (client_sock > max_fd) {
+        max_fd = client_sock;
+    }
+
     /* Add new client to selection FD set. */
     FD_SET(client_sock, &active_fd_set);
 
@@ -198,6 +204,11 @@ int connect_server(const char* hostname, const int port, int client_sock)
                 (struct sockaddr*)&server_addr,
                 sizeof(server_addr)) < 0) {
         PLOG_FATAL("connect");
+    }
+
+    /* Update upperbound of used FD for sockets. */
+    if (server_sock > max_fd) {
+        max_fd = server_sock;
     }
 
     /* Add new server to selection FD set. */
@@ -548,10 +559,10 @@ int main(int argc, char** argv)
     while(true) {
         /* Block until input arrives on one or more active sockets. */
         read_fd_set = active_fd_set;
-        if (select(FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0) {
+        if (select(max_fd + 1, &read_fd_set, NULL, NULL, NULL) < 0) {
             PLOG_FATAL("select");
         }
-        for (int fd = 0; fd < FD_SETSIZE; ++fd) {
+        for (int fd = 0; fd <= max_fd; ++fd) {
             if (FD_ISSET(fd, &read_fd_set)) {
                 /* Accept new client. */
                 if (fd == listen_sock) {
