@@ -250,6 +250,7 @@ void process_sock(int fd)
     char* val = NULL; /* Cache value, i.e. head + "\r\n" + body. */
     int val_len = 0; /* Byte size of cache value. */
     int age = 0; /* Age of cache element in seconds. */
+    char* key = NULL;
 
     /* Receive client request. */
     bzero(buf, BUF_SIZE);
@@ -280,9 +281,16 @@ void process_sock(int fd)
              hostname,
              port);
 
-    /* Check cache. */
-    cache_hit = (cache_get(url, &val, &val_len, &age) > 0);
+    /* Use hostname + url as cache key. */
+    key = malloc(strlen(hostname) + strlen(url) + 1);
+    if (key == NULL) {
+        PLOG_FATAL("malloc");
+    }
+    strcpy(key, hostname);
+    strcat(key, url);
+
     /* Get server response from cache. */
+    cache_hit = (cache_get(key, &val, &val_len, &age) > 0);
     if (cache_hit) {
         LOG_INFO("cache hit\n");
 
@@ -419,7 +427,7 @@ void process_sock(int fd)
         val_len += strlen("\r\n");
         memcpy(val + val_len, response_body, response_body_len);
         val_len += response_body_len;
-        cache_put(url, val, val_len, max_age);
+        cache_put(key, val, val_len, max_age);
 
         /* Close server socket. */
         close(server_sock);
@@ -468,6 +476,8 @@ void process_sock(int fd)
     cache_control = NULL;
     free(val);
     val = NULL;
+    free(key);
+    key = NULL;
     disconnect_client(fd);
 }
 
