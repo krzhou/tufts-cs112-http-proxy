@@ -541,6 +541,41 @@ void process_sock(int fd)
     key = NULL;
 }
 
+/**
+ * @brief Handle incoming message from a client/server.
+ * 
+ * @param fd FD for a client/server socket.
+ */
+void handle_msg(int fd)
+{
+    struct sock_buf* sock_buf = NULL; /* Socket buffer. */
+    char buf[BUF_SIZE]; /* Message buffer. */
+    int n; /* Byte size actually received or sent. */
+
+    sock_buf = sock_buf_get(fd);
+    if (sock_buf == NULL) {
+        LOG_ERROR("unknown socket %d", fd);
+        return;
+    }
+
+    /* Receive message. */
+    bzero(buf, BUF_SIZE);
+    n = read(fd, buf, BUF_SIZE);
+    if (n < 0) {
+        PLOG_FATAL("read");
+    }
+    /* TODO: Handle arbitrary disconnection, i.e. read of 0 byte. */
+
+    /* TODO: Write into socket buffer. */
+
+    /* TODO: Parse socket buffer. */
+
+    /* TODO: For client socket, connect a server and forward request. */
+
+    /* TODO: For server socket, forward response to its client, then disconnect 
+     * server. */
+}
+
 int main(int argc, char** argv)
 {
     /* Parse cmd line args. */
@@ -569,7 +604,8 @@ int main(int argc, char** argv)
                     accept_client();
                 }
                 else {
-                    process_sock(fd);
+                    // process_sock(fd);
+                    handle_msg(fd);
                 }
             }
         }
