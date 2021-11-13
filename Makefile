@@ -75,7 +75,7 @@ valgrind-test: all
 # Each executable depends on one or more .o files.
 # Those .o files are linked together to build the corresponding
 # executable.
-proxy: proxy.o logger.o cache.o sock_buf.o
+proxy: proxy.o logger.o cache.o sock_buf.o http_parser.o
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 test_logger: test_logger.o logger.o
