@@ -150,7 +150,8 @@ void accept_client(void)
     /* Add new client to selection FD set. */
     FD_SET(client_sock, &active_fd_set);
 
-    /* TODO: Create socket buffer for this new client. */
+    /* Create socket buffer for this new client. */
+    sock_buf_add_client(client_sock);
 
     LOG_INFO("accept %s:%hu",
              inet_ntoa(client_addr.sin_addr),
@@ -158,29 +159,14 @@ void accept_client(void)
 }
 
 /**
- * @brief Disconnect a client of the given FD.
- *
- * @param fd FD for client socket.
- */
-void disconnect_client(int fd)
-{
-    /* Close connection with client. */
-    close(fd);
-
-    /* Remove the client from FD set for select(). */
-    FD_CLR(fd, &active_fd_set);
-
-    LOG_INFO("disconnect client (fd: %d), fd");
-}
-
-/**
  * Connect to server by the given hostname and port.
  *
  * @param hostname Server hostname without port number.
  * @param port Server port number.
+ * @param client_sock FD for client socket.
  * @return Socket of the new connected client.
  */
-int connect_server(const char* hostname, const int port)
+int connect_server(const char* hostname, const int port, int client_sock)
 {
     int server_sock;
     struct hostent* server;
@@ -214,10 +200,72 @@ int connect_server(const char* hostname, const int port)
         PLOG_FATAL("connect");
     }
 
+    /* Add new server to selection FD set. */
+    FD_SET(server_sock, &active_fd_set);
+
+    /* Create socket buffer for this server. */
+    sock_buf_add_server(server_sock, client_sock);
+
+    LOG_INFO("connect to %s:%d", hostname, port);
+
     return server_sock;
 }
 
-/* Handle one client each time. */
+/**
+ * @brief Disconnect the given server.
+ * 
+ * @param fd FD for server socket.
+ */
+void disconnect_server(int fd)
+{
+    /* Close connection with server. */
+    close(fd);
+
+    /* Remove the server from FD set for select(). */
+    FD_CLR(fd, &active_fd_set);
+
+    /* Remove socket buffer for the server. */
+    sock_buf_rm(fd);
+
+    LOG_INFO("disconnect server (fd: %d)", fd);
+}
+
+/**
+ * @brief Disconnect a client of the given FD.
+ *
+ * Its required servers will also be disconnected.
+ * @param fd FD for client socket.
+ */
+void disconnect_client(int fd)
+{
+    struct sock_buf* sock_buf = NULL;
+
+    /* Close connection with client. */
+    close(fd);
+
+    /* Remove the client from FD set for select(). */
+    FD_CLR(fd, &active_fd_set);
+
+    /* Remove socket buffer of the client. */
+    sock_buf_rm(fd);
+
+    /* Remove socket buffer of its requested servers. */
+    for (int i = 0; i < FD_SETSIZE; ++i) {
+        sock_buf = sock_buf_get(i);
+        if (sock_buf != NULL && sock_buf->client == fd) {
+            disconnect_server(i);
+        }
+    }
+
+    LOG_INFO("disconnect client (fd: %d)", fd);
+}
+
+
+/**
+ * @brief Handle incoming message from the socket of the given FD.
+ * 
+ * @param fd FD for a socket.
+ */
 void process_sock(int fd)
 {
     int server_sock;
@@ -331,7 +379,7 @@ void process_sock(int fd)
         LOG_INFO("cache miss\n");
 
         /* Connect server. */
-        server_sock = connect_server(hostname, port);
+        server_sock = connect_server(hostname, port, fd);
 
         /* Forward client request to server. */
         n = write(server_sock, request_head, request_head_len);
@@ -430,7 +478,7 @@ void process_sock(int fd)
         cache_put(key, val, val_len, max_age);
 
         /* Close server socket. */
-        close(server_sock);
+        disconnect_server(server_sock);
     }
 
     /* Forward server response to client. */
@@ -448,6 +496,8 @@ void process_sock(int fd)
             PLOG_FATAL("ERROR writing to server");
         }
     }
+
+    disconnect_client(fd);
 
     /* Cleanup. */
     free(request_head);
@@ -478,7 +528,6 @@ void process_sock(int fd)
     val = NULL;
     free(key);
     key = NULL;
-    disconnect_client(fd);
 }
 
 int main(int argc, char** argv)
