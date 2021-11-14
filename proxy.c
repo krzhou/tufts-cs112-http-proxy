@@ -564,7 +564,17 @@ void handle_msg(int fd)
     if (n < 0) {
         PLOG_FATAL("read");
     }
-    /* TODO: Handle arbitrary disconnection, i.e. read of 0 byte. */
+    else if (n == 0) {
+        /* Socket is disconnected on the other side. */
+        if (sock_buf->client < 0) {
+            /* This socket is for a client since its client socket is -1. */
+            disconnect_client(fd);
+        }
+        else {
+            /* This socket is for a server since its client socket is valid. */
+            disconnect_server(fd);
+        }
+    }
 
     /* TODO: Write into socket buffer. */
 
