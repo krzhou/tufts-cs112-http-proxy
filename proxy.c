@@ -131,6 +131,16 @@ void INT_handler(int sig)
 }
 
 /**
+ * @brief SIGPIPE hander that ignores this signal.
+ *
+ * @param sig
+ */
+void PIPE_hander(int sig)
+{
+    (void)sig;
+}
+
+/**
  * @brief Accept a new client.
  */
 void accept_client(void)
@@ -609,6 +619,9 @@ int main(int argc, char** argv)
 
     /* Clean up and stop proxy by CTRL+C. */
     signal(SIGINT, INT_handler);
+
+    /* Ignore SIGPIPE. */
+    signal(SIGPIPE, PIPE_hander);
 
     /* Main loop. */
     while(true) {
