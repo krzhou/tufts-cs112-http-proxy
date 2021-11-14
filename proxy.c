@@ -293,6 +293,22 @@ void disconnect_client(int fd)
 }
 
 /**
+ * @brief Disconnect the given socket (client or server) and clear its data 
+ * structures, e.g. socket buffer, selection list and etc.
+ *
+ * @param fd Socket to disconnect.
+ */
+void disconnect_sock(int fd) {
+    if (sock_buf_get(fd)->client < 0) {
+        disconnect_client(fd);
+    }
+    else {
+        disconnect_server(fd);
+    }
+}
+
+
+/**
  * @brief Handle one client at a time.
  * 
  * @param fd FD for client socket.
@@ -589,11 +605,21 @@ void handle_msg(int fd)
     else if (n == 0) {
         /* Socket is disconnected on the other side. */
         if (is_client) {
+            LOG_ERROR("client socket is closed on the other side");
             disconnect_client(fd);
+            return;
         }
         else {
+            LOG_ERROR("server socket is closed on the other side");
             disconnect_server(fd);
+            return;
         }
+    }
+    if (is_client) {
+        LOG_INFO("received %d bytes from client (fd: %d)", n, fd);
+    }
+    else {
+        LOG_INFO("received %d bytes from server (fd: %d)", n, fd);
     }
 
     /* Write received message into socket buffer. */
@@ -625,6 +651,8 @@ void handle_msg(int fd)
             if (strcmp(method, "GET") == 0) {
                 LOG_INFO("handle GET method");
 
+                parse_host_field(host, &hostname, &port);
+
                 /* Use hostname + url as cache key. */
                 key = malloc(strlen(hostname) + strlen(url) + 1);
                 if (key == NULL) {
@@ -635,9 +663,9 @@ void handle_msg(int fd)
 
                 /* TODO: Check cache. */
 
-                parse_host_field(host, &hostname, &port);
                 /* TODO: Tell server about the key. */
                 server_sock = connect_server(hostname, port, fd, 0);
+
                 /* Forward request to server. */
                 n = write(server_sock, request, request_len);
                 if (n < 0) {
@@ -645,9 +673,12 @@ void handle_msg(int fd)
                     disconnect_server(server_sock);
                 }
                 if (n == 0) {
-                    /* Server socket is closed on the other side. */
+                    LOG_ERROR("server socket is closed on the other side");
                     disconnect_server(server_sock);
                 }
+
+                free(request);
+                request = NULL;
             }
             else if (strcmp(method, "CONNECT") == 0) {
                 LOG_INFO("handle CONNECT method");
@@ -672,8 +703,34 @@ void handle_msg(int fd)
         }
     }
     else {
-        /* TODO: Parse the leading completed response. */
-        /* TODO: Forward its response to its client, then disconnect server. */
+        char* response = NULL;
+        int response_len = 0;
+
+        /* Extract the leading completed response. */
+        if (extract_first_response(&(sock_buf->msg),
+                                   &(sock_buf->len),
+                                   &response,
+                                   &response_len) == 0) {
+            /* Response is incomplete.*/
+            return;
+        }
+
+        /* Forward response to client. */
+        n = write(sock_buf->client, response, response_len);
+        if (n < 0) {
+            PLOG_ERROR("write");
+            disconnect_client(sock_buf->client);
+        }
+        if (n == 0) {
+            LOG_ERROR("client socket is closed on the other side");
+            disconnect_client(sock_buf->client);
+        }
+
+        /* Disconnect server. */
+        disconnect_server(fd);
+
+        free(response);
+        response = NULL;
     }
 }
 
