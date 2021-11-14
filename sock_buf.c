@@ -61,6 +61,7 @@ int is_valid_fd(int fd) {
  * @param fd FD for socket.
  * @return int Number of socket message buffer added, i.e. 1 if succeeds; 0
  * otherwise.
+ * @return int Number of added client buffer, i.e. 1 on success; 0 otherwise.
  */
 int sock_buf_add_client(int fd)
 {
@@ -79,6 +80,7 @@ int sock_buf_add_client(int fd)
     new_sock_buf->len = 0;
     new_sock_buf->client = -1;
     new_sock_buf->last_access = 0;
+    new_sock_buf->is_connect = 0;
     sock_buf_arr[fd] = new_sock_buf;
     return 1;
 }
@@ -89,8 +91,10 @@ int sock_buf_add_client(int fd)
  * @param fd FD for socket.
  * @return int Number of socket message buffer added, i.e. 1 if succeeds; 0
  * otherwise.
+ * @param is_connect Whether this server socket is for a CONNECT request.
+ * @return int Number of added server buffer, i.e. 1 on success; 0 otherwise.
  */
-int sock_buf_add_server(int fd, int client)
+int sock_buf_add_server(int fd, int client, int is_connect)
 {
     struct sock_buf* new_sock_buf = NULL;
 
@@ -110,6 +114,7 @@ int sock_buf_add_server(int fd, int client)
     new_sock_buf->len = 0;
     new_sock_buf->client = client;
     new_sock_buf->last_access = 0;
+    new_sock_buf->is_connect = is_connect;
     sock_buf_arr[fd] = new_sock_buf;
     return 1;
 }
