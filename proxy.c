@@ -273,11 +273,11 @@ void disconnect_client(int fd)
 
 
 /**
- * @brief Handle incoming message from the socket of the given FD.
+ * @brief Handle one client at a time.
  * 
- * @param fd FD for a socket.
+ * @param fd FD for client socket.
  */
-void process_sock(int fd)
+void handle_one_client(int fd)
 {
     int server_sock;
     char buf[BUF_SIZE]; /* Message buffer. */
@@ -604,7 +604,7 @@ int main(int argc, char** argv)
                     accept_client();
                 }
                 else {
-                    // process_sock(fd);
+                    // handle_one_client(fd);
                     handle_msg(fd);
                 }
             }
