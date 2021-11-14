@@ -174,40 +174,50 @@ void accept_client(void)
  * @param hostname Server hostname without port number.
  * @param port Server port number.
  * @param client_sock FD for client socket.
+ * @param is_connect Whether the server is for CONNECT request.
  * @return Socket of the new connected client.
  */
-int connect_server(const char* hostname, const int port, int client_sock)
-{
+int connect_server(const char *hostname,
+                   const int port,
+                   int client_sock,
+                   int is_connect) {
     int server_sock;
-    struct hostent* server;
+    struct hostent *server;
     struct sockaddr_in server_addr;
 
     /* Create server socket. */
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
     if (server_sock < 0) {
-        PLOG_FATAL("socket");
+        PLOG_ERROR("socket");
+        return -1;
     }
 
     /* Get the server's DNS entry. */
     server = gethostbyname(hostname);
     if (server == NULL) {
-        fprintf(stderr,"ERROR, no such host as %s\n", hostname);
-        exit(EXIT_FAILURE);
+        PLOG_ERROR("no such host as %s\n", hostname);
+        return -1;
     }
 
     /* Build the server's Internet address. */
-    bzero((char*) &server_addr, sizeof(server_addr));
+    bzero((char *)&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    bcopy((char*)server->h_addr,
-          (char*)&server_addr.sin_addr.s_addr,
-          server->h_length);
+    bcopy((char *)server->h_addr, (char *)&server_addr.sin_addr.s_addr,
+            server->h_length);
     server_addr.sin_port = htons(port);
 
     /* Create a connection with the server. */
-    if (connect(server_sock,
-                (struct sockaddr*)&server_addr,
+    if (connect(server_sock, (struct sockaddr *)&server_addr,
                 sizeof(server_addr)) < 0) {
-        PLOG_FATAL("connect");
+        PLOG_ERROR("connect");
+        return -1;
+    }
+
+    /* Create socket buffer for this server. */
+    if (sock_buf_add_server(server_sock, client_sock, is_connect) == 0) {
+        LOG_ERROR("fail to add server socket buffer");
+        close(server_sock);
+        return -1;
     }
 
     /* Update upperbound of used FD for sockets. */
@@ -217,9 +227,6 @@ int connect_server(const char* hostname, const int port, int client_sock)
 
     /* Add new server to selection FD set. */
     FD_SET(server_sock, &active_fd_set);
-
-    /* Create socket buffer for this server. */
-    sock_buf_add_server(server_sock, client_sock);
 
     LOG_INFO("connect to %s:%d", hostname, port);
 
