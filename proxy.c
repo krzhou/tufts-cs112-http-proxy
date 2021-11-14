@@ -185,7 +185,7 @@ void accept_client(void)
  * @param port Server port number.
  * @param client_sock FD for client socket.
  * @param is_connect Whether the server is for CONNECT request.
- * @return Socket of the new connected client.
+ * @return Socket of the new connected server.
  */
 int connect_server(const char *hostname,
                    const int port,
@@ -571,12 +571,14 @@ void handle_msg(int fd)
     struct sock_buf* sock_buf = NULL; /* Socket buffer. */
     char buf[BUF_SIZE]; /* Message buffer. */
     int n; /* Byte size actually received or sent. */
+    int is_client = 0; /* Whether this socket is for a client. */
 
     sock_buf = sock_buf_get(fd);
     if (sock_buf == NULL) {
         LOG_ERROR("unknown socket %d", fd);
         return;
     }
+    is_client = sock_buf->client < 0;
 
     /* Receive message. */
     bzero(buf, BUF_SIZE);
@@ -586,24 +588,93 @@ void handle_msg(int fd)
     }
     else if (n == 0) {
         /* Socket is disconnected on the other side. */
-        if (sock_buf->client < 0) {
-            /* This socket is for a client since its client socket is -1. */
+        if (is_client) {
             disconnect_client(fd);
         }
         else {
-            /* This socket is for a server since its client socket is valid. */
             disconnect_server(fd);
         }
     }
 
-    /* TODO: Write into socket buffer. */
+    /* Write received message into socket buffer. */
+    sock_buf->msg = realloc(sock_buf->msg, sock_buf->len + n);
+    memcpy(sock_buf->msg + sock_buf->len, buf, n);
+    sock_buf->len += n;
 
-    /* TODO: Parse socket buffer. */
+    /* Parse socket buffer. */
+    if (is_client) {
+        char* request = NULL;
+        int request_len = 0;
+        char* method = NULL; /* Method field in client request. */
+        char* url = NULL; /* URL field in client request. */
+        char* version = NULL; /* Version field in client request. */
+        char* host = NULL; /* Host field in client request. */
+        char* hostname = NULL; /* Server hostname without port number. */
+        int port = 80; /* Server port in client request. 80 by default. */
+        int server_sock;
+        char* key = NULL;
 
-    /* TODO: For client socket, connect a server and forward request. */
+        /* Extract the leading completed request. */
+        if (extract_first_request(&(sock_buf->msg),
+                                  &(sock_buf->len),
+                                  &request,
+                                  &request_len) > 0) {
+            /* Parse request. */
+            parse_request_head(request, &method, &url, &version, &host);
+            /* Handle CONNECT differently. */
+            if (strcmp(method, "GET") == 0) {
+                LOG_INFO("handle GET method");
 
-    /* TODO: For server socket, forward response to its client, then disconnect 
-     * server. */
+                /* Use hostname + url as cache key. */
+                key = malloc(strlen(hostname) + strlen(url) + 1);
+                if (key == NULL) {
+                    PLOG_FATAL("malloc");
+                }
+                strcpy(key, hostname);
+                strcat(key, url);
+
+                /* TODO: Check cache. */
+
+                parse_host_field(host, &hostname, &port);
+                /* TODO: Tell server about the key. */
+                server_sock = connect_server(hostname, port, fd, 0);
+                /* Forward request to server. */
+                n = write(server_sock, request, request_len);
+                if (n < 0) {
+                    PLOG_ERROR("write");
+                    disconnect_server(server_sock);
+                }
+                if (n == 0) {
+                    /* Server socket is closed on the other side. */
+                    disconnect_server(server_sock);
+                }
+            }
+            else if (strcmp(method, "CONNECT") == 0) {
+                LOG_INFO("handle CONNECT method");
+                /* TODO */
+            }
+            else {
+                LOG_ERROR("unsupported HTTP method");
+            }
+
+            free(method);
+            method = NULL;
+            free(url);
+            url = NULL;
+            free(version);
+            version = NULL;
+            free(host);
+            host = NULL;
+            free(hostname);
+            hostname = NULL;
+            free(key);
+            key = NULL;
+        }
+    }
+    else {
+        /* TODO: Parse the leading completed response. */
+        /* TODO: Forward its response to its client, then disconnect server. */
+    }
 }
 
 int main(int argc, char** argv)
@@ -636,6 +707,7 @@ int main(int argc, char** argv)
                 if (fd == listen_sock) {
                     accept_client();
                 }
+                /* Handle arriving data from a connected socket. */
                 else {
                     // handle_one_client(fd);
                     handle_msg(fd);
