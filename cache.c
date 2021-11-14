@@ -16,8 +16,6 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define CACHE_KEY_MAX_SIZE 100
-
 struct cache_elem {
     char* key;
     char* val;
@@ -215,7 +213,7 @@ cache_elem* cache_force_get_elem(const char* key)
 
     elem = the_cache->front->next;
     while (elem != the_cache->back) {
-        if (strncmp(elem->key, key, CACHE_KEY_MAX_SIZE) == 0) {
+        if (strcmp(elem->key, key) == 0) {
             return elem;
         }
         elem = elem->next;
@@ -251,13 +249,12 @@ int cache_update(const char* key,
     /* Update element contents. */
     free(elem->val);
     elem->val = NULL;
-    elem->val = malloc(val_len + 1);
+    elem->val = malloc(val_len);
     if (elem->val == NULL) {
         PLOG_ERROR("malloc");
         return 0;
     }
     memcpy(elem->val, val, val_len);
-    (elem->val)[val_len] = '\0';
     elem->val_len = val_len;
     elem->creation_time = time(NULL);
     elem->max_age = max_age;
@@ -441,9 +438,8 @@ int cache_get(const char* key,
         return 0;
     }
     *out_val = NULL;
-    *out_val = malloc(elem->val_len + 1);
+    *out_val = malloc(elem->val_len);
     memcpy(*out_val, elem->val, elem->val_len);
-    (*out_val)[elem->val_len] = '\0';
     *out_val_len = elem->val_len;
     *out_age = cache_elem_age(elem);
     return 1;
