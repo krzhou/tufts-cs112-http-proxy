@@ -102,8 +102,23 @@ void parse_response_head(const char* response,
  * @param cache_control String of cache control field.
  * @param out_max_age Ouput; Integer after "max-age=".
  * If "max-age=" is not found, *out_max_age will remain its original value.
- * @return 
  */
 void parse_cache_control(const char* cache_control, int* out_max_age);
+
+/**
+ * @brief Extract the first complete HTTP request from buf.
+ * 
+ * @param buf Buffer may contain a HTTP request.
+ * @param n Byte size of the buffer.
+ * @param out_request Output: The first HTTP request head in buffer if the 
+ * request is completed; it is not changed otherwise.
+ * @param out_len Output; Byte size of request head if it is completed; it is
+ * not changed otherwise.
+ * @return int Number of extracted request, i.e. 1 on success; 0 otherwise.
+ */
+int extract_first_request(char** buf,
+                          int* n,
+                          char** out_request,
+                          int* out_len);
 
 #endif /* HTTP_PARSER_H */

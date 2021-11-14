@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 /**
  * @brief Parse HTTP request/response and extract its head and body.
  *
@@ -403,4 +404,62 @@ void parse_cache_control(const char* cache_control, int* out_max_age)
         return;
     }
     *out_max_age = atoi(pos);
+}
+
+/**
+ * @brief Extract the first complete HTTP request from buf.
+ * 
+ * @param buf Buffer may contain a HTTP request.
+ * @param n Byte size of the buffer.
+ * @param out_request Output: String of the first HTTP request in buffer if the 
+ * request is completed; it is not changed otherwise.
+ * @param out_len Output; Byte size of request head if it is completed; it is
+ * not changed otherwise.
+ * @return int Number of extracted request, i.e. 1 on success; 0 otherwise.
+ */
+int extract_first_request(char** buf,
+                          int* n,
+                          char** out_request,
+                          int* out_len) {
+    char* end = NULL;
+    int size = -1;
+    char* new_buf = NULL;
+
+    if (buf == NULL || *buf == NULL) {
+        return 0;
+    }
+
+    /* Find the empty line between head and body. */
+    end = strstr(*buf, "\r\n\r\n");
+    if (end == NULL) {
+        /* Request head is incomplete. */
+        return 0;
+    }
+    
+    end += strlen("\r\n\r\n"); /* End of request. */
+    size = end - *buf; /* Byte size of request. */
+    
+    /* Copy response head without the empty line. */
+    *out_request = malloc(size + 1);
+    if (*out_request == NULL) {
+        PLOG_ERROR("malloc");
+        return 0;
+    }
+    memcpy(*out_request, buf, size);
+    (*out_request)[size] = '\0';
+    *out_len = size;
+
+    /* Remove the copied response from buf. */
+    if (*n > size) {
+        new_buf = malloc(*n - size);
+        if (new_buf == NULL) {
+            PLOG_ERROR("malloc");
+            return 0;
+        }
+        memcpy(new_buf, *buf + size, *n - size);
+    }
+    free(*buf);
+    *buf = new_buf;
+    *n -= size;
+    return 1;
 }
