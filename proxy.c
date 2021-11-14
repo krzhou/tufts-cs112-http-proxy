@@ -282,7 +282,6 @@ void disconnect_client(int fd)
     LOG_INFO("disconnect client (fd: %d)", fd);
 }
 
-
 /**
  * @brief Handle one client at a time.
  * 
@@ -401,7 +400,7 @@ void handle_one_client(int fd)
         LOG_INFO("cache miss\n");
 
         /* Connect server. */
-        server_sock = connect_server(hostname, port, fd);
+        server_sock = connect_server(hostname, port, fd, 0);
 
         /* Forward client request to server. */
         n = write(server_sock, request_head, request_head_len);
