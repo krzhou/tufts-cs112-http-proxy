@@ -413,8 +413,8 @@ void parse_cache_control(const char* cache_control, int* out_max_age)
  * @param n Byte size of the buffer.
  * @param out_request Output: String of the first HTTP request in buffer if the 
  * request is completed; it is not changed otherwise.
- * @param out_len Output; Byte size of request head if it is completed; it is
- * not changed otherwise.
+ * @param out_len Output; Byte size of request if it is completed; it is not
+ * changed otherwise.
  * @return int Number of extracted request, i.e. 1 on success; 0 otherwise.
  */
 int extract_first_request(char** buf,
@@ -461,5 +461,81 @@ int extract_first_request(char** buf,
     free(*buf);
     *buf = new_buf;
     *n -= size;
+    return 1;
+}
+
+/**
+ * @brief Extract the first complete HTTP response from buf.
+ * 
+ * @param buf Buffer may contain a HTTP response.
+ * @param n Byte size of the buffer.
+ * @param out_response Output: String of the first HTTP response in buffer if the
+ * response is completed; it is not changed otherwise.
+ * @param out_len Output; Byte size of response if it is completed; it is not
+ * changed otherwise.
+ * @return int Number of extracted response, i.e. 1 on success; 0 otherwise.
+ */
+int extract_first_response(char** buf,
+                          int* n,
+                          char** out_request,
+                          int* out_len) {
+    char* st = NULL;
+    char* end = NULL;
+    int len = 0;
+    char* name = NULL; /* Field name of a header line. */
+    char* value = NULL; /* Field value of a header line. */
+    int content_length = 0;
+
+    if (buf == NULL || *buf == NULL) {
+        return 0;
+    }
+
+    /* Find the empty line between head and body. */
+    end = strstr(*buf, "\r\n\r\n");
+    if (end == NULL) {
+        /* Request head is incomplete. */
+        return 0;
+    }
+    end += strlen("\r\n"); /* End of the last header line, i.e. the start of the 
+                            * empty line. */
+    /* From now on, the head is completed. */
+
+    /* Skip the status line. */
+    st = strstr(*buf, "\r\n");
+    st += strlen("\r\n"); /* Start of the first header line. */
+
+    /* Get content length. */
+    while (st < end) {
+        len = parse_header_line(st, &name, &value);
+        if (name != NULL) {
+            if (strcmp(name, "Content-Length") == 0) {
+                content_length = atoi(value);
+                free(name);
+                name = NULL;
+                free(value);
+                value = NULL;
+                break;
+            }
+        }
+        free(name);
+        name = NULL;
+        free(value);
+        value = NULL;
+        st += len;
+    }
+
+    /* Check body size. */
+    st = end + strlen("\r\n"); /* Start of body. */
+    if (*n - (end - *buf) < content_length) {
+        /* Body is incomplete. */
+        return 0;
+    }
+    /* From now on, body is completed. */
+
+    /* Return the request. */
+    *out_request = *buf;
+    *out_len = *n;
+    *buf = NULL;
+    *n = 0;
     return 1;
 }

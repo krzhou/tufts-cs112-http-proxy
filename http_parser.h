@@ -121,4 +121,20 @@ int extract_first_request(char** buf,
                           char** out_request,
                           int* out_len);
 
+/**
+ * @brief Extract the first complete HTTP response from buf.
+ * 
+ * @param buf Buffer may contain a HTTP response.
+ * @param n Byte size of the buffer.
+ * @param out_response Output: String of the first HTTP response in buffer if the
+ * response is completed; it is not changed otherwise.
+ * @param out_len Output; Byte size of response if it is completed; it is not
+ * changed otherwise.
+ * @return int Number of extracted response, i.e. 1 on success; 0 otherwise.
+ */
+int extract_first_response(char** buf,
+                          int* n,
+                          char** out_request,
+                          int* out_len);
+
 #endif /* HTTP_PARSER_H */
