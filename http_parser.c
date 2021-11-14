@@ -232,9 +232,19 @@ void parse_request_head(const char* request,
     st += len; /* End of request line. */
     while (st < end) {
         len = parse_header_line(st, &name, &value);
+        if (len < 0) {
+            free(name);
+            name = NULL;
+            free(value);
+            value = NULL;
+            break;
+        }
         if (name != NULL && strcmp(name, "Host") == 0) {
             *out_host = value;
             value = NULL;
+            free(name);
+            name = NULL;
+            break;
         }
         free(name);
         name = NULL;
@@ -445,7 +455,7 @@ int extract_first_request(char** buf,
         PLOG_ERROR("malloc");
         return 0;
     }
-    memcpy(*out_request, buf, size);
+    memcpy(*out_request, *buf, size);
     (*out_request)[size] = '\0';
     *out_len = size;
 
