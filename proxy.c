@@ -148,6 +148,13 @@ void accept_client(void)
         return;
     }
 
+    /* Create socket buffer for this new client. */
+    if (sock_buf_add_client(client_sock) == 0) {
+        LOG_ERROR("fail to add client socket buffer");
+        close(client_sock);
+        return;
+    }
+
     /* Update upperbound of used FD for sockets. */
     if (client_sock > max_fd) {
         max_fd = client_sock;
@@ -155,9 +162,6 @@ void accept_client(void)
 
     /* Add new client to selection FD set. */
     FD_SET(client_sock, &active_fd_set);
-
-    /* Create socket buffer for this new client. */
-    sock_buf_add_client(client_sock);
 
     LOG_INFO("accept %s:%hu",
              inet_ntoa(client_addr.sin_addr),
