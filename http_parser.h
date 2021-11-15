@@ -130,11 +130,13 @@ int extract_first_request(char** buf,
  * response is completed; it is not changed otherwise.
  * @param out_len Output; Byte size of response if it is completed; it is not
  * changed otherwise.
+ * @param out_max_age Output: Max age (time-to-live) for the response in cache.
  * @return int Number of extracted response, i.e. 1 on success; 0 otherwise.
  */
 int extract_first_response(char** buf,
                           int* n,
                           char** out_request,
-                          int* out_len);
+                          int* out_len,
+                          int* out_max_age);
 
 #endif /* HTTP_PARSER_H */

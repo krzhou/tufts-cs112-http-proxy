@@ -483,18 +483,21 @@ int extract_first_request(char** buf,
  * response is completed; it is not changed otherwise.
  * @param out_len Output; Byte size of response if it is completed; it is not
  * changed otherwise.
+ * @param out_max_age Output: Max age (time-to-live) for the response in cache.
  * @return int Number of extracted response, i.e. 1 on success; 0 otherwise.
  */
 int extract_first_response(char** buf,
                           int* n,
                           char** out_request,
-                          int* out_len) {
+                          int* out_len,
+                          int* out_max_age) {
     char* st = NULL;
     char* end = NULL;
     int len = 0;
     char* name = NULL; /* Field name of a header line. */
     char* value = NULL; /* Field value of a header line. */
     int content_length = 0;
+    char* cache_control = NULL;
 
     if (buf == NULL || *buf == NULL) {
         return 0;
@@ -514,17 +517,16 @@ int extract_first_response(char** buf,
     st = strstr(*buf, "\r\n");
     st += strlen("\r\n"); /* Start of the first header line. */
 
-    /* Get content length. */
+    /* Get content length and cache control. */
     while (st < end) {
         len = parse_header_line(st, &name, &value);
         if (name != NULL) {
             if (strcmp(name, "Content-Length") == 0) {
                 content_length = atoi(value);
-                free(name);
-                name = NULL;
-                free(value);
+            }
+            else if (strcmp(name, "Cache-Control") == 0) {
+                cache_control = value;
                 value = NULL;
-                break;
             }
         }
         free(name);
@@ -533,6 +535,11 @@ int extract_first_response(char** buf,
         value = NULL;
         st += len;
     }
+
+    /* Get max age. */
+    *out_max_age = 3600; /* 1h by default. */
+    /* TODO: Handle other cache-control value. */
+    parse_cache_control(cache_control, out_max_age);
 
     /* Check body size. */
     st = end + strlen("\r\n"); /* Start of body. */

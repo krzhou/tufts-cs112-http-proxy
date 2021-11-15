@@ -21,7 +21,8 @@ struct sock_buf {
     int len;
     int client; /* FD for client socket; -1 for client. */
     time_t last_access;
-    int is_connect;
+    int connected_sock;
+    char* key; /* String of key, i.e. hostname + url from the GET request. */
 };
 
 /**
@@ -55,10 +56,10 @@ int sock_buf_add_client(int fd);
  * @return int Number of socket message buffer added, i.e. 1 if succeeds; 0
  * otherwise.
  * @param is_connect Whether this server socket is for a CONNECT request.
+ * @param key String of cache key, i.e. hostname + url in GET request.
  * @return int Number of added server buffer, i.e. 1 on success; 0 otherwise.
  */
-int sock_buf_add_server(int fd, int client, int is_connect);
-
+int sock_buf_add_server(int fd, int client, int is_connect, char* key);
 
 /**
  * @brief Remove socket message buffer of the given FD.
