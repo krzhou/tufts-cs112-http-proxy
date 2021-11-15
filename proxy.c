@@ -354,6 +354,189 @@ int reply_connection_established(int fd, char *version){
 }
 
 /**
+ * @brief Handle client request if the request inf buffer is completed.
+ * 
+ * @param fd FD for client socket.
+ */
+void handle_client_request(int fd)
+{
+    struct sock_buf* sock_buf = sock_buf_get(fd);
+    char* request = NULL;
+    int request_len = 0;
+    char* method = NULL; /* Method field in client request. */
+    char* url = NULL; /* URL field in client request. */
+    char* version = NULL; /* Version field in client request. */
+    char* host = NULL; /* Host field in client request. */
+    char* hostname = NULL; /* Server hostname without port number. */
+    int port = -1; /* Server port in client request. 80 by default. */
+    int server_sock;
+    char* key = NULL;
+    int n;
+
+    if (sock_buf == NULL) {
+        return;
+    }
+
+    /* Extract the leading completed request. */
+    if (extract_first_request(&(sock_buf->msg),
+                              &(sock_buf->len),
+                              &request,
+                              &request_len) > 0) {
+        /* Parse request. */
+        parse_request_head(request, &method, &url, &version, &host);
+        parse_host_field(host, &hostname, &port);
+        LOG_INFO("parsed request:\n"
+                 "- method: %s\n"
+                 "- url: %s\n"
+                 "- version: %s\n"
+                 "- hostname: %s",
+                 method,
+                 url,
+                 version,
+                 hostname);
+
+        if (strcmp(method, "GET") == 0) {
+            /* TODO: handle_get_request() */
+            char* val = NULL;
+            int val_len = 0;
+            int age = 0;
+
+            LOG_INFO("handle GET method");
+
+            if (port < 0) {
+                port = 80; /* Default port for HTTP. */
+            }
+            LOG_INFO(" - port: %d\n", port);
+
+            /* Use hostname + url as cache key. */
+            key = malloc(strlen(hostname) + strlen(url) + 1);
+            if (key == NULL) {
+                PLOG_FATAL("malloc");
+            }
+            strcpy(key, hostname);
+            strcat(key, url);
+
+            /* Check cache. */
+            if (cache_get(key, &val, &val_len, &age) > 0) {
+                LOG_INFO("cache hit");
+
+                /* TODO: Add age field in the response head. */
+
+                /* Forward cached response to the client. */
+                n = write(fd, val, val_len);
+                if (n < 0) {
+                    PLOG_ERROR("write");
+                    disconnect_client(fd);
+                }
+                if (n == 0) {
+                    LOG_ERROR("client socket is closed on the other side");
+                    disconnect_client(fd);
+                }
+
+                free(method);
+                method = NULL;
+                free(url);
+                url = NULL;
+                free(version);
+                version = NULL;
+                free(host);
+                host = NULL;
+                free(hostname);
+                hostname = NULL;
+                free(key);
+                key = NULL;
+                free(request);
+                request = NULL;
+                free(val);
+                val = NULL;
+
+                return;
+            }
+            LOG_INFO("cache miss");
+
+            /* Connect the requested server. */
+            server_sock = connect_server(hostname, port, fd, -1, key);
+            if (server_sock < 0) {
+                /* Fail to connect the request server. */
+                free(method);
+                method = NULL;
+                free(url);
+                url = NULL;
+                free(version);
+                version = NULL;
+                free(host);
+                host = NULL;
+                free(hostname);
+                hostname = NULL;
+                free(request);
+                request = NULL;
+                return;
+            }
+
+            /* Forward request to server. */
+            n = write(server_sock, request, request_len);
+            if (n < 0) {
+                PLOG_ERROR("write");
+                disconnect_server(server_sock);
+            }
+            if (n == 0) {
+                LOG_ERROR("server socket is closed on the other side");
+                disconnect_server(server_sock);
+            }
+        }
+        else if (strcmp(method, "CONNECT") == 0) {
+            /* TODO: handle_connect_request() */
+            LOG_INFO("handle CONNECT method");
+            if (port < 0) {
+                port = 443;/* Default port for SSL link. */
+            }
+            LOG_INFO("port: %d\n", port);
+            
+            server_sock = connect_server(hostname, port, fd, fd, NULL);
+            if(server_sock < 0){
+                /*Error in connecting to server*/
+                free(method);
+                method = NULL;
+                free(url);
+                url = NULL;
+                free(version);
+                version = NULL;
+                free(host);
+                host = NULL;
+                free(hostname);
+                hostname = NULL;
+                return;
+            }
+            else{
+                /*Add connected_sock to client*/
+                sock_buf->connected_sock = server_sock;
+                /*Send Connection established response*/
+                reply_connection_established(fd, version);
+            }
+        }
+        else {
+            LOG_ERROR("unsupported HTTP method");
+        }
+
+        free(method);
+        method = NULL;
+        free(url);
+        url = NULL;
+        free(version);
+        version = NULL;
+        free(host);
+        host = NULL;
+        free(hostname);
+        hostname = NULL;
+        free(key);
+        key = NULL;
+        free(request);
+        request = NULL;
+    }
+
+}
+
+/**
  * @brief Handle server response. If response in buffer is completed, cache and
  * forward it to client.
  *
@@ -484,169 +667,7 @@ void handle_msg(int fd)
 
     /* Parse socket buffer. */
     if (is_client) {
-        /* TODO: handle_client_request() */
-        char* request = NULL;
-        int request_len = 0;
-        char* method = NULL; /* Method field in client request. */
-        char* url = NULL; /* URL field in client request. */
-        char* version = NULL; /* Version field in client request. */
-        char* host = NULL; /* Host field in client request. */
-        char* hostname = NULL; /* Server hostname without port number. */
-        int port; /* Server port in client request. 80 by default. */
-        int server_sock;
-        char* key = NULL;
-
-        /* Extract the leading completed request. */
-        if (extract_first_request(&(sock_buf->msg),
-                                  &(sock_buf->len),
-                                  &request,
-                                  &request_len) > 0) {
-            /* Parse request. */
-            parse_request_head(request, &method, &url, &version, &host);
-            LOG_INFO("parsed request:\n"
-                     "method: %s\n"
-                     "url: %s\n"
-                     "version: %s\n"
-                     "host: %s\n",
-                     method,
-                     url,
-                     version,
-                     host); /* TEST */
-
-            if (strcmp(method, "GET") == 0) {
-                /* TODO: handle_get_request() */
-                char* val = NULL;
-                int val_len = 0;
-                int age = 0;
-
-                LOG_INFO("handle GET method");
-
-                port = 80;
-                parse_host_field(host, &hostname, &port);
-
-                /* Use hostname + url as cache key. */
-                key = malloc(strlen(hostname) + strlen(url) + 1);
-                if (key == NULL) {
-                    PLOG_FATAL("malloc");
-                }
-                strcpy(key, hostname);
-                strcat(key, url);
-
-                /* Check cache. */
-                if (cache_get(key, &val, &val_len, &age) > 0) {
-                    LOG_INFO("cache hit");
-
-                    /* TODO: Add age field in the response head. */
-
-                    /* Forward cached response to the client. */
-                    n = write(fd, val, val_len);
-                    if (n < 0) {
-                        PLOG_ERROR("write");
-                        disconnect_client(fd);
-                    }
-                    if (n == 0) {
-                        LOG_ERROR("client socket is closed on the other side");
-                        disconnect_client(fd);
-                    }
-
-                    free(method);
-                    method = NULL;
-                    free(url);
-                    url = NULL;
-                    free(version);
-                    version = NULL;
-                    free(host);
-                    host = NULL;
-                    free(hostname);
-                    hostname = NULL;
-                    free(key);
-                    key = NULL;
-                    free(request);
-                    request = NULL;
-                    free(val);
-                    val = NULL;
-
-                    return;
-                }
-                LOG_INFO("cache miss");
-
-                /* Connect the requested server. */
-                server_sock = connect_server(hostname, port, fd, -1, key);
-                if (server_sock < 0) {
-                    /* Fail to connect the request server. */
-                    free(method);
-                    method = NULL;
-                    free(url);
-                    url = NULL;
-                    free(version);
-                    version = NULL;
-                    free(host);
-                    host = NULL;
-                    free(hostname);
-                    hostname = NULL;
-                    free(request);
-                    request = NULL;
-                    return;
-                }
-
-                /* Forward request to server. */
-                n = write(server_sock, request, request_len);
-                if (n < 0) {
-                    PLOG_ERROR("write");
-                    disconnect_server(server_sock);
-                }
-                if (n == 0) {
-                    LOG_ERROR("server socket is closed on the other side");
-                    disconnect_server(server_sock);
-                }
-            }
-            else if (strcmp(method, "CONNECT") == 0) {
-                /* handle_connect_request() */
-                LOG_INFO("handle CONNECT method");
-                port = 443;/*Default port for SSL link*/
-                parse_host_field(host, &hostname, &port);
-                
-                server_sock = connect_server(hostname, port, fd, fd, NULL);
-                if(server_sock < 0){
-                    /*Error in connecting to server*/
-                    free(method);
-                    method = NULL;
-                    free(url);
-                    url = NULL;
-                    free(version);
-                    version = NULL;
-                    free(host);
-                    host = NULL;
-                    free(hostname);
-                    hostname = NULL;
-                    return;
-                }
-                else{
-                    /*Add connected_sock to client*/
-                    sock_buf->connected_sock = server_sock;
-                    /*Send Connection established response*/
-                    reply_connection_established(fd, version);
-                }
-            }
-            else {
-                LOG_ERROR("unsupported HTTP method");
-            }
-
-            free(method);
-            method = NULL;
-            free(url);
-            url = NULL;
-            free(version);
-            version = NULL;
-            free(host);
-            host = NULL;
-            free(hostname);
-            hostname = NULL;
-            free(key);
-            key = NULL;
-            free(request);
-            request = NULL;
-        }
+         handle_client_request(fd);
     }
     else {
         handle_server_response(fd);
