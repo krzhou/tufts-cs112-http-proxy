@@ -385,12 +385,32 @@ void handle_get_request(int fd,
     strcpy(key, hostname);
     strcat(key, url);
     if (cache_get(key, &val, &val_len, &age) > 0) {
+        char* head = NULL;
+        int head_len = 0;
+        char* body = NULL;
+        int body_len = 0;
+        char* age_line = NULL;
+
         LOG_INFO("cache hit");
 
-        /* TODO: Add age field in the response head. */
+        /* Create header line for age field. */
+        age_line = malloc(100);
+        if (age_line == NULL) {
+            PLOG_ERROR("malloc");
+        }
+        else {
+            bzero(age_line, 100);
+            sprintf(age_line, "Age: %d\r\n", age);
+        }
 
         /* Forward cached response to the client. */
-        n = write(fd, val, val_len);
+        parse_body_head(val, val_len, &head, &head_len, &body, &body_len);
+        n = write(fd, head, head_len);
+        if (age_line != NULL) {
+            n = write(fd, age_line, strlen(age_line));
+        }
+        n = write(fd, "\r\n", strlen("\r\n"));
+        n = write(fd, body, body_len);
         if (n < 0) {
             PLOG_ERROR("write");
             disconnect_client(fd);
@@ -400,10 +420,16 @@ void handle_get_request(int fd,
             disconnect_client(fd);
         }
 
-        free(val);
-        val = NULL;
         free(key);
         key = NULL;
+        free(val);
+        val = NULL;
+        free(head);
+        head = NULL;
+        free(body);
+        body = NULL;
+        free(age_line);
+        age_line = NULL;
 
         return;
     }
@@ -503,7 +529,7 @@ void handle_client_request(int fd)
             if (port < 0) {
                 port = 80; /* Default port for HTTP. */
             }
-            LOG_INFO("port: %d\n", port);
+            LOG_INFO("port: %d", port);
 
             handle_get_request(fd, request, request_len, url, hostname, port);
         }
@@ -513,7 +539,7 @@ void handle_client_request(int fd)
             if (port < 0) {
                 port = 443; /* Default port for SSL link. */
             }
-            LOG_INFO("port: %d\n", port);
+            LOG_INFO("port: %d", port);
 
             handle_connect_request(fd, version, hostname, port);
         }
@@ -534,7 +560,6 @@ void handle_client_request(int fd)
         free(request);
         request = NULL;
     }
-
 }
 
 /**
@@ -613,17 +638,25 @@ void handle_msg(int fd)
     bzero(buf, BUF_SIZE);
     n = read(fd, buf, BUF_SIZE);
     if (n < 0) {
-        PLOG_FATAL("read");
-    }
-    else if (n == 0) {
-        /* Socket is disconnected on the other side. */
+        PLOG_ERROR("read");
         if (is_client) {
-            LOG_ERROR("client socket is closed on the other side");
             disconnect_client(fd);
             return;
         }
         else {
-            LOG_ERROR("server socket is closed on the other side");
+            disconnect_server(fd);
+            return;
+        }
+    }
+    else if (n == 0) {
+        /* Socket is disconnected on the other side. */
+        if (is_client) {
+            LOG_INFO("client socket is closed on the other side");
+            disconnect_client(fd);
+            return;
+        }
+        else {
+            LOG_INFO("server socket is closed on the other side");
             disconnect_server(fd);
             return;
         }
@@ -650,7 +683,7 @@ void handle_msg(int fd)
             }
         }
         if (n == 0) {
-            LOG_ERROR("CONNECT socket is closed on the other side");
+            LOG_INFO("CONNECT socket is closed on the other side");
             if (is_client) {
                 disconnect_server(sock_buf->connected_sock);
             }
