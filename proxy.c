@@ -354,6 +354,57 @@ int reply_connection_established(int fd, char *version){
 }
 
 /**
+ * @brief Handle server response. If response in buffer is completed, cache and
+ * forward it to client.
+ *
+ * @param fd FD for server socket.
+ */
+void handle_server_response(int fd)
+{
+    char* response = NULL;
+    int response_len = 0;
+    int max_age = 3600;
+    struct sock_buf* sock_buf = sock_buf_get(fd);
+    int n;
+
+    if (sock_buf == NULL) {
+        return;
+    }
+
+    /* Extract the leading completed response. */
+    if (extract_first_response(&(sock_buf->msg),
+                                &(sock_buf->len),
+                                &response,
+                                &response_len,
+                                &max_age) == 0) {
+        /* Response is incomplete.*/
+        return;
+    }
+
+    /* Cache response. */
+    if (cache_put(sock_buf->key, response, response_len, max_age) == 0) {
+        LOG_ERROR("fail to cache server response");
+    }
+
+    /* Forward response to client. */
+    n = write(sock_buf->client, response, response_len);
+    if (n < 0) {
+        PLOG_ERROR("write");
+        disconnect_client(sock_buf->client);
+    }
+    if (n == 0) {
+        LOG_ERROR("client socket is closed on the other side");
+        disconnect_client(sock_buf->client);
+    }
+
+    /* Disconnect server. */
+    disconnect_server(fd);
+
+    free(response);
+    response = NULL;
+}
+
+/**
  * @brief Handle incoming message from a client/server.
  * 
  * @param fd FD for a client/server socket.
@@ -433,6 +484,7 @@ void handle_msg(int fd)
 
     /* Parse socket buffer. */
     if (is_client) {
+        /* TODO: handle_client_request() */
         char* request = NULL;
         int request_len = 0;
         char* method = NULL; /* Method field in client request. */
@@ -462,6 +514,7 @@ void handle_msg(int fd)
                      host); /* TEST */
 
             if (strcmp(method, "GET") == 0) {
+                /* TODO: handle_get_request() */
                 char* val = NULL;
                 int val_len = 0;
                 int age = 0;
@@ -483,8 +536,9 @@ void handle_msg(int fd)
                 if (cache_get(key, &val, &val_len, &age) > 0) {
                     LOG_INFO("cache hit");
 
-                    /* Forward cached response to the client. */
                     /* TODO: Add age field in the response head. */
+
+                    /* Forward cached response to the client. */
                     n = write(fd, val, val_len);
                     if (n < 0) {
                         PLOG_ERROR("write");
@@ -547,6 +601,7 @@ void handle_msg(int fd)
                 }
             }
             else if (strcmp(method, "CONNECT") == 0) {
+                /* handle_connect_request() */
                 LOG_INFO("handle CONNECT method");
                 port = 443;/*Default port for SSL link*/
                 parse_host_field(host, &hostname, &port);
@@ -594,41 +649,7 @@ void handle_msg(int fd)
         }
     }
     else {
-        char* response = NULL;
-        int response_len = 0;
-        int max_age = 3600;
-
-        /* Extract the leading completed response. */
-        if (extract_first_response(&(sock_buf->msg),
-                                   &(sock_buf->len),
-                                   &response,
-                                   &response_len,
-                                   &max_age) == 0) {
-            /* Response is incomplete.*/
-            return;
-        }
-
-        /* Cache response. */
-        if (cache_put(sock_buf->key, response, response_len, max_age) == 0) {
-            LOG_ERROR("fail to cache server response");
-        }
-
-        /* Forward response to client. */
-        n = write(sock_buf->client, response, response_len);
-        if (n < 0) {
-            PLOG_ERROR("write");
-            disconnect_client(sock_buf->client);
-        }
-        if (n == 0) {
-            LOG_ERROR("client socket is closed on the other side");
-            disconnect_client(sock_buf->client);
-        }
-
-        /* Disconnect server. */
-        disconnect_server(fd);
-
-        free(response);
-        response = NULL;
+        handle_server_response(fd);
     }
 }
 
