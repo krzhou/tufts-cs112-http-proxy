@@ -354,6 +354,31 @@ int reply_connection_established(int fd, char *version){
 }
 
 /**
+ * @brief Handle a CONNECT request.
+ * 
+ * @param fd FD for client socket.
+ * @param version String of HTTP version field in the request.
+ * @param hostname Hostname to request.
+ * @param port Port number to request.
+ */
+void handle_connect_request(int fd, char* version, char* hostname, int port)
+{
+    int server_sock;
+    struct sock_buf* sock_buf = sock_buf_get(fd);
+
+    server_sock = connect_server(hostname, port, fd, fd, NULL);
+    if (server_sock < 0) {
+        return;
+    }
+
+    /* Add connected_sock to client. */
+    sock_buf->connected_sock = server_sock;
+
+    /* Reply client with "Connection Established". */
+    reply_connection_established(fd, version);
+}
+
+/**
  * @brief Handle client request if the request inf buffer is completed.
  * 
  * @param fd FD for client socket.
@@ -485,34 +510,14 @@ void handle_client_request(int fd)
             }
         }
         else if (strcmp(method, "CONNECT") == 0) {
-            /* TODO: handle_connect_request() */
             LOG_INFO("handle CONNECT method");
+
             if (port < 0) {
-                port = 443;/* Default port for SSL link. */
+                port = 443; /* Default port for SSL link. */
             }
             LOG_INFO("port: %d\n", port);
-            
-            server_sock = connect_server(hostname, port, fd, fd, NULL);
-            if(server_sock < 0){
-                /*Error in connecting to server*/
-                free(method);
-                method = NULL;
-                free(url);
-                url = NULL;
-                free(version);
-                version = NULL;
-                free(host);
-                host = NULL;
-                free(hostname);
-                hostname = NULL;
-                return;
-            }
-            else{
-                /*Add connected_sock to client*/
-                sock_buf->connected_sock = server_sock;
-                /*Send Connection established response*/
-                reply_connection_established(fd, version);
-            }
+
+            handle_connect_request(fd, version, hostname, port);
         }
         else {
             LOG_ERROR("unsupported HTTP method");
