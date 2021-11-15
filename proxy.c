@@ -506,10 +506,10 @@ void handle_client_request(int fd)
     }
 
     /* Extract the leading completed request. */
-    if (extract_first_request(&(sock_buf->msg),
-                              &(sock_buf->len),
-                              &request,
-                              &request_len) > 0) {
+    while (extract_first_request(&(sock_buf->msg),
+                                 &(sock_buf->len),
+                                 &request,
+                                 &request_len) > 0) {
         /* Parse request. */
         parse_request_head(request, &method, &url, &version, &host);
         parse_host_field(host, &hostname, &port);
