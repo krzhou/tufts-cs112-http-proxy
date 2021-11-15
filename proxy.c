@@ -354,6 +354,86 @@ int reply_connection_established(int fd, char *version){
 }
 
 /**
+ * @brief Handle GET request.
+ * 
+ * @param fd FD for client socket.
+ * @param request Client request.
+ * @param request_len Byte size of client request.
+ * @param url URL in client request.
+ * @param hostname Hostname in client request.
+ * @param port Port number in client request.
+ */
+void handle_get_request(int fd,
+                        char* request,
+                        int request_len,
+                        char* url,
+                        char* hostname,
+                        int port) {
+    char* key = NULL;
+    char* val = NULL;
+    int val_len = 0;
+    int age = 0;
+    int n;
+    int server_sock;
+
+    /* Check cache. */
+    /* Use hostname + url as cache key. */
+    key = malloc(strlen(hostname) + strlen(url) + 1);
+    if (key == NULL) {
+        PLOG_FATAL("malloc");
+    }
+    strcpy(key, hostname);
+    strcat(key, url);
+    if (cache_get(key, &val, &val_len, &age) > 0) {
+        LOG_INFO("cache hit");
+
+        /* TODO: Add age field in the response head. */
+
+        /* Forward cached response to the client. */
+        n = write(fd, val, val_len);
+        if (n < 0) {
+            PLOG_ERROR("write");
+            disconnect_client(fd);
+        }
+        if (n == 0) {
+            LOG_ERROR("client socket is closed on the other side");
+            disconnect_client(fd);
+        }
+
+        free(val);
+        val = NULL;
+        free(key);
+        key = NULL;
+
+        return;
+    }
+    LOG_INFO("cache miss");
+
+    /* Connect the requested server. */
+    server_sock = connect_server(hostname, port, fd, -1, key);
+    if (server_sock < 0) {
+        /* Fail to connect the request server. */
+        free(key);
+        key = NULL;
+        return;
+    }
+
+    /* Forward request to server. */
+    n = write(server_sock, request, request_len);
+    if (n < 0) {
+        PLOG_ERROR("write");
+        disconnect_server(server_sock);
+    }
+    if (n == 0) {
+        LOG_ERROR("server socket is closed on the other side");
+        disconnect_server(server_sock);
+    }
+
+    free(key);
+    key = NULL;
+}
+
+/**
  * @brief Handle a CONNECT request.
  * 
  * @param fd FD for client socket.
@@ -394,9 +474,6 @@ void handle_client_request(int fd)
     char* host = NULL; /* Host field in client request. */
     char* hostname = NULL; /* Server hostname without port number. */
     int port = -1; /* Server port in client request. 80 by default. */
-    int server_sock;
-    char* key = NULL;
-    int n;
 
     if (sock_buf == NULL) {
         return;
@@ -421,93 +498,14 @@ void handle_client_request(int fd)
                  hostname);
 
         if (strcmp(method, "GET") == 0) {
-            /* TODO: handle_get_request() */
-            char* val = NULL;
-            int val_len = 0;
-            int age = 0;
-
             LOG_INFO("handle GET method");
 
             if (port < 0) {
                 port = 80; /* Default port for HTTP. */
             }
-            LOG_INFO(" - port: %d\n", port);
+            LOG_INFO("port: %d\n", port);
 
-            /* Use hostname + url as cache key. */
-            key = malloc(strlen(hostname) + strlen(url) + 1);
-            if (key == NULL) {
-                PLOG_FATAL("malloc");
-            }
-            strcpy(key, hostname);
-            strcat(key, url);
-
-            /* Check cache. */
-            if (cache_get(key, &val, &val_len, &age) > 0) {
-                LOG_INFO("cache hit");
-
-                /* TODO: Add age field in the response head. */
-
-                /* Forward cached response to the client. */
-                n = write(fd, val, val_len);
-                if (n < 0) {
-                    PLOG_ERROR("write");
-                    disconnect_client(fd);
-                }
-                if (n == 0) {
-                    LOG_ERROR("client socket is closed on the other side");
-                    disconnect_client(fd);
-                }
-
-                free(method);
-                method = NULL;
-                free(url);
-                url = NULL;
-                free(version);
-                version = NULL;
-                free(host);
-                host = NULL;
-                free(hostname);
-                hostname = NULL;
-                free(key);
-                key = NULL;
-                free(request);
-                request = NULL;
-                free(val);
-                val = NULL;
-
-                return;
-            }
-            LOG_INFO("cache miss");
-
-            /* Connect the requested server. */
-            server_sock = connect_server(hostname, port, fd, -1, key);
-            if (server_sock < 0) {
-                /* Fail to connect the request server. */
-                free(method);
-                method = NULL;
-                free(url);
-                url = NULL;
-                free(version);
-                version = NULL;
-                free(host);
-                host = NULL;
-                free(hostname);
-                hostname = NULL;
-                free(request);
-                request = NULL;
-                return;
-            }
-
-            /* Forward request to server. */
-            n = write(server_sock, request, request_len);
-            if (n < 0) {
-                PLOG_ERROR("write");
-                disconnect_server(server_sock);
-            }
-            if (n == 0) {
-                LOG_ERROR("server socket is closed on the other side");
-                disconnect_server(server_sock);
-            }
+            handle_get_request(fd, request, request_len, url, hostname, port);
         }
         else if (strcmp(method, "CONNECT") == 0) {
             LOG_INFO("handle CONNECT method");
@@ -533,8 +531,6 @@ void handle_client_request(int fd)
         host = NULL;
         free(hostname);
         hostname = NULL;
-        free(key);
-        key = NULL;
         free(request);
         request = NULL;
     }
