@@ -13,7 +13,7 @@
 
 ############## Variables ###############
 # Executables to build using "make all".
-EXECUTABLES = proxy tcpclient
+EXECUTABLES = proxy
 
 # Tests to build using "make test".
 TESTS = test_logger test_sock_buf test_cache
@@ -79,9 +79,6 @@ proxy: proxy.o logger.o cache.o sock_buf.o http_parser.o
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 test_logger: test_logger.o logger.o
-	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
-
-tcpclient: tcpclient.o
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 test_sock_buf: test_sock_buf.o sock_buf.o logger.o
