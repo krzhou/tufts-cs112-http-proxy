@@ -134,7 +134,7 @@ echo '- compare with no response header'
 diff ${name}-response-no-header.txt ${name}-response-proxy-no-header.txt
 echo
 
-# Test CONNECT method.
+# Test CONNECT method by cplusplus.com.
 name='cplusplus'
 url='https://www.cplusplus.com/reference/cstring/strcat/'
 echo "CONNECT ${url}"
@@ -167,7 +167,7 @@ echo '- compare with no response header'
 diff ${name}-response-no-header.txt ${name}-response-proxy-no-header.txt
 echo
 
-# Test CONNECT method.
+# Test CONNECT method by google.
 name='google'
 url='https://www.google.com'
 echo "CONNECT ${url}"
@@ -194,10 +194,10 @@ curl "${url}" \
 --output ${name}-response-proxy-no-header.txt \
 --stderr ${name}-verbose-proxy-no-header.txt
 # Compare direct and proxy access.
-echo '- compare with response header'
-diff ${name}-response.txt ${name}-response-proxy.txt
-echo '- compare with no response header'
-diff ${name}-response-no-header.txt ${name}-response-proxy-no-header.txt
+# echo '- compare with response header'
+# diff ${name}-response.txt ${name}-response-proxy.txt
+# echo '- compare with no response header'
+# diff ${name}-response-no-header.txt ${name}-response-proxy-no-header.txt
 echo
 
 # # Test with SCP wiki, which uses chunked transfer encoding.
