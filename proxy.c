@@ -342,9 +342,12 @@ int reply_connection_established(int fd, char *version){
         disconnect_client(fd);
         return -1;
     }
-    if(n < size){
+    else if(n < size){
         LOG_ERROR("Cannot write the whole message");
         return -2;
+    }
+    else {
+        LOG_INFO("replied Connection Established");
     }
 
     free(message);
@@ -674,7 +677,7 @@ void handle_msg(int fd)
             return;
         }
     }
-    #if 0
+    #if 1
     if (is_client) {
         LOG_INFO("received %d bytes from client (fd: %d)", n, fd);
     }
@@ -685,7 +688,7 @@ void handle_msg(int fd)
 
     /* Forward encrypted messages originated from a CONNECT method. */
     if (is_connect) {
-        #if 0
+        #if 1
         LOG_INFO("forwarding encrypted data from fd %d to fd %d",
                 fd,
                 sock_buf->connected_sock);
