@@ -517,10 +517,12 @@ void handle_client_request(int fd)
                  "- method: %s\n"
                  "- url: %s\n"
                  "- version: %s\n"
+                 "- host: %s\n"
                  "- hostname: %s",
                  method,
                  url,
                  version,
+                 host,
                  hostname);
 
         if (strcmp(method, "GET") == 0) {
