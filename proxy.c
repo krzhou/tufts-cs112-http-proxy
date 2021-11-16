@@ -415,9 +415,14 @@ void handle_get_request(int fd,
             PLOG_ERROR("write");
             disconnect_client(fd);
         }
-        if (n == 0) {
+        else if (n == 0) {
             LOG_ERROR("client socket is closed on the other side");
             disconnect_client(fd);
+        }
+        else {
+          LOG_INFO("forward %d bytes from cache to client (fd %d)",
+                   val_len,
+                   fd);
         }
 
         free(key);
@@ -603,9 +608,15 @@ void handle_server_response(int fd)
         PLOG_ERROR("write");
         disconnect_client(sock_buf->client);
     }
-    if (n == 0) {
+    else if (n == 0) {
         LOG_ERROR("client socket is closed on the other side");
         disconnect_client(sock_buf->client);
+    }
+    else {
+        LOG_INFO("forward %d bytes from server (fd %d) to client (fd %d)",
+                response_len,
+                fd,
+                sock_buf->client);
     }
 
     /* Disconnect server. */
@@ -663,18 +674,22 @@ void handle_msg(int fd)
             return;
         }
     }
+    #if 0
     if (is_client) {
         LOG_INFO("received %d bytes from client (fd: %d)", n, fd);
     }
     else {
         LOG_INFO("received %d bytes from server (fd: %d)", n, fd);
     }
+    #endif
 
     /* Forward encrypted messages originated from a CONNECT method. */
     if (is_connect) {
+        #if 0
         LOG_INFO("forwarding encrypted data from fd %d to fd %d",
                 fd,
-                sock_buf->connected_sock); /* TEST */
+                sock_buf->connected_sock);
+        #endif
         n = write(sock_buf->connected_sock, buf, n);
         if (n < 0) {
             PLOG_ERROR("write");
