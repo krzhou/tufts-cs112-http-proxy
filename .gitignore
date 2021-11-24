@@ -58,3 +58,6 @@ proxy
 test_logger
 test_sock_buf
 test_cache
+
+# Submissions
+checkpoint1/
