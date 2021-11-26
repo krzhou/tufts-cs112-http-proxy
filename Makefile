@@ -31,9 +31,9 @@ IFLAGS = -I.
 # -g3: Debugging information settings.
 # -O0: Optimization settings.
 # -std=gnu99: c standard settings.
-# -Wall -Wextra -Werror -Wfatal-errors -pedantic: Max out warnings.
+# -Wall -Wextra -pedantic: Max out warnings.
 # $(IFLAGS): Include path settings.
-CFLAGS = -g3 -O0 -std=gnu99 -Wall -Wextra -Werror -Wfatal-errors -pedantic $(IFLAGS)
+CFLAGS = -g3 -O0 -std=gnu99 -Wall -Wextra -pedantic $(IFLAGS)
 
 # Linking flags, used in the linking step.
 # Set debugging information and update linking path.
