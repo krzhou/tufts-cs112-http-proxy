@@ -18,6 +18,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <openssl/ssl.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -192,7 +193,6 @@ void accept_client(void)
 int connect_server(const char *hostname,
                    const int port,
                    int client_sock,
-                   int connected_sock,
                    char* key) {
     int server_sock;
     struct hostent *server;
@@ -215,12 +215,14 @@ int connect_server(const char *hostname,
     /* Build the server's Internet address. */
     bzero((char *)&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, (char *)&server_addr.sin_addr.s_addr,
-            server->h_length);
+    bcopy((char *)server->h_addr,
+          (char *)&server_addr.sin_addr.s_addr,
+          server->h_length);
     server_addr.sin_port = htons(port);
 
     /* Create a connection with the server. */
-    if (connect(server_sock, (struct sockaddr *)&server_addr,
+    if (connect(server_sock,
+                (struct sockaddr *)&server_addr,
                 sizeof(server_addr)) < 0) {
         PLOG_ERROR("connect");
         return -1;
@@ -229,7 +231,6 @@ int connect_server(const char *hostname,
     /* Create socket buffer for this server. */
     if (sock_buf_add_server(server_sock,
                             client_sock,
-                            connected_sock,
                             key) == 0) {
       LOG_ERROR("fail to add server socket buffer");
       close(server_sock);
@@ -249,6 +250,14 @@ int connect_server(const char *hostname,
     return server_sock;
 }
 
+void ssl_connect_server(const char* hostname, int port, int fd)
+{
+    int server_sock;
+
+    server_sock = connect_server(hostname, port, fd, NULL);
+    /* TODO */
+}
+
 void disconnect_client(int fd);
 
 /**
@@ -258,22 +267,28 @@ void disconnect_client(int fd);
  */
 void disconnect_server(int fd)
 {
-    int connected_sock = -1;
+    struct sock_buf* client_buf = NULL;
+    struct sock_buf* server_buf = NULL;
 
-    close(fd);
-    FD_CLR(fd, &active_fd_set);
+    /* TODO: Correctly disconnect SSL connection. */
 
-    /* Reset client's CONNECT state. */
-    connected_sock = sock_buf_get(fd)->connected_sock;
+    /* Close SSL connection. */
+    server_buf = sock_buf_get(fd);
+    if (server_buf->ssl) {
+        SSL_shutdown(server_buf->ssl);
+        SSL_free(server_buf->ssl);
 
-    /* Remove socket buffer for the server. */
-    sock_buf_rm(fd);
-
-    /* Clear client buffer. */
-    if (connected_sock >= 0) {
-        disconnect_client(connected_sock);
+        /* Close SSL connection of the corresponding client. */
+        client_buf = sock_buf_get(server_buf->client);
+        SSL_shutdown(client_buf->ssl);
+        SSL_free(client_buf->ssl);
     }
-
+    /* Close TCP connection. */
+    close(fd);
+    /* Remove from FD set for select(). */
+    FD_CLR(fd, &active_fd_set);
+    /* Remove socket buffer. */
+    sock_buf_rm(fd);
 
     LOG_INFO("disconnect server (fd: %d)", fd);
 }
@@ -286,21 +301,28 @@ void disconnect_server(int fd)
  */
 void disconnect_client(int fd)
 {
-    struct sock_buf* sock_buf = NULL;
+    struct sock_buf* client_buf = NULL;
+    struct sock_buf* server_buf = NULL;
 
-    /* Close connection with client. */
+    /* TODO: Correctly disconnect SSL connection. */
+
+    /* Close SSL connection. */
+    client_buf = sock_buf_get(fd);
+    if (client_buf->ssl) {
+        SSL_shutdown(client_buf->ssl);
+        SSL_free(client_buf->ssl);
+    }
+    /* Close TCP connection. */
     close(fd);
-
-    /* Remove the client from FD set for select(). */
+    /* Remove from FD set for select(). */
     FD_CLR(fd, &active_fd_set);
-
-    /* Remove socket buffer of the client. */
+    /* Remove socket buffer. */
     sock_buf_rm(fd);
 
     /* Remove socket buffer of its requested servers. */
     for (int i = 0; i < FD_SETSIZE; ++i) {
-        sock_buf = sock_buf_get(i);
-        if (sock_buf != NULL && sock_buf->client == fd) {
+        server_buf = sock_buf_get(i);
+        if (server_buf != NULL && server_buf->client == fd) {
             disconnect_server(i);
         }
     }
@@ -444,7 +466,7 @@ void handle_get_request(int fd,
     LOG_INFO("cache miss");
 
     /* Connect the requested server. */
-    server_sock = connect_server(hostname, port, fd, -1, key);
+    server_sock = connect_server(hostname, port, fd, key);
     if (server_sock < 0) {
         /* Fail to connect the request server. */
         free(key);
@@ -477,19 +499,11 @@ void handle_get_request(int fd,
  */
 void handle_connect_request(int fd, char* version, char* hostname, int port)
 {
-    int server_sock;
-    struct sock_buf* sock_buf = sock_buf_get(fd);
+    /* TODO: Establish SSL connection with server. */
+    ssl_connect_server(hostname, port, fd);
 
-    server_sock = connect_server(hostname, port, fd, fd, NULL);
-    if (server_sock < 0) {
-        return;
-    }
+    /* TODO: Establish SSL connection with client. */
 
-    /* Add connected_sock to client. */
-    sock_buf->connected_sock = server_sock;
-
-    /* Reply client with "Connection Established". */
-    reply_connection_established(fd, version);
 }
 
 /**
@@ -640,7 +654,6 @@ void handle_msg(int fd)
     char buf[BUF_SIZE]; /* Message buffer. */
     int n; /* Byte size actually received or sent. */
     int is_client = 0; /* Whether this socket is for a client. */
-    int is_connect = 0; /*Whether this socket is in CONNECT mode*/
 
     sock_buf = sock_buf_get(fd);
     if (sock_buf == NULL) {
@@ -648,7 +661,6 @@ void handle_msg(int fd)
         return;
     }
     is_client = sock_buf->client < 0;
-    is_connect = sock_buf->connected_sock >= 0;
 
     /* Receive message. */
     bzero(buf, BUF_SIZE);
@@ -685,34 +697,6 @@ void handle_msg(int fd)
         LOG_INFO("received %d bytes from server (fd: %d)", n, fd);
     }
     #endif
-
-    /* Forward encrypted messages originated from a CONNECT method. */
-    if (is_connect) {
-        #if 1
-        LOG_INFO("forwarding encrypted data from fd %d to fd %d",
-                fd,
-                sock_buf->connected_sock);
-        #endif
-        n = write(sock_buf->connected_sock, buf, n);
-        if (n < 0) {
-            PLOG_ERROR("write");
-            if (is_client) {
-                disconnect_server(sock_buf->connected_sock);
-            } else {
-                disconnect_client(sock_buf->connected_sock);
-            }
-        }
-        if (n == 0) {
-            LOG_INFO("CONNECT socket is closed on the other side");
-            if (is_client) {
-                disconnect_server(sock_buf->connected_sock);
-            }
-            else {
-                disconnect_client(sock_buf->connected_sock);
-            }
-        }
-        return;
-    }
 
     /* Write received message into socket buffer. */
     sock_buf->msg = realloc(sock_buf->msg, sock_buf->len + n);
