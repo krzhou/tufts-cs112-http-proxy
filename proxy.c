@@ -18,6 +18,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/ssl.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -34,6 +36,7 @@ static int listen_sock; /* Listening socket of the proxy. */
 static fd_set active_fd_set; /* FD sets of all active sockets. */
 static fd_set read_fd_set;   /* FD sets of all sockets read to be read. */
 static int max_fd = 4; /* Largest used FD so far. */
+static SSL_CTX* ssl_ctx; /* SSL context. */
 
 /**
  * @brief Initialzed a listening socket that listens on the given port.
@@ -89,6 +92,28 @@ void init_proxy(void)
     }
     LOG_INFO("listen on port %d", listen_port);
 
+    /* Init SSL. */
+    SSL_library_init();
+    OpenSSL_add_all_algorithms();
+    SSL_load_error_strings();
+    ssl_ctx = SSL_CTX_new(SSLv23_method());
+    if (ssl_ctx == NULL) {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+    /*  Load certificates. */
+    if (SSL_CTX_use_certificate_file(ssl_ctx, "localhost.cert", SSL_FILETYPE_PEM) <= 0) {
+        LOG_ERROR("SSL_CTX_use_certificate_file");
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+    /* Load private key. */
+    if (SSL_CTX_use_PrivateKey_file(ssl_ctx, "localhost.key", SSL_FILETYPE_PEM) <= 0) {
+        LOG_ERROR("SSL_CTX_use_PrivateKey_file");
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+
     /* Init FD set for select(). */
     FD_ZERO(&active_fd_set);
     FD_SET(listen_sock, &active_fd_set);
@@ -118,6 +143,8 @@ void clear_proxy(void)
 
     /* Free socket buffer array. */
     sock_buf_arr_clear();
+
+    SSL_CTX_free(ssl_ctx);
 }
 
 /**
@@ -250,14 +277,6 @@ int connect_server(const char *hostname,
     return server_sock;
 }
 
-void ssl_connect_server(const char* hostname, int port, int fd)
-{
-    int server_sock;
-
-    server_sock = connect_server(hostname, port, fd, NULL);
-    /* TODO */
-}
-
 void disconnect_client(int fd);
 
 /**
@@ -269,8 +288,6 @@ void disconnect_server(int fd)
 {
     struct sock_buf* client_buf = NULL;
     struct sock_buf* server_buf = NULL;
-
-    /* TODO: Correctly disconnect SSL connection. */
 
     /* Close SSL connection. */
     server_buf = sock_buf_get(fd);
@@ -304,8 +321,6 @@ void disconnect_client(int fd)
     struct sock_buf* client_buf = NULL;
     struct sock_buf* server_buf = NULL;
 
-    /* TODO: Correctly disconnect SSL connection. */
-
     /* Close SSL connection. */
     client_buf = sock_buf_get(fd);
     if (client_buf->ssl) {
@@ -328,6 +343,79 @@ void disconnect_client(int fd)
     }
 
     LOG_INFO("disconnect client (fd: %d)", fd);
+}
+
+/**
+ * Establish SSL connection to server.
+ *
+ * @param hostname Server hostname without port number.
+ * @param port Server port number.
+ * @param client_sock FD for client socket.
+ * @return Socket of the new connected server.
+ */
+void ssl_connect_server(const char* hostname, int port, int fd)
+{
+    int server_sock;
+    struct sock_buf* sock_buf = NULL;
+    SSL* ssl = NULL;
+    int ret = 0;
+
+    server_sock = connect_server(hostname, port, fd, NULL);
+    sock_buf = sock_buf_get(server_sock);
+    ssl = SSL_new(ssl_ctx);
+    if (ssl == NULL) {
+        PLOG_ERROR("SSL_new");
+        disconnect_server(server_sock);
+        return;
+    }
+    sock_buf->ssl = ssl;
+    ret = SSL_set_fd(ssl, server_sock);
+    if (ret == 0) {
+        PLOG_ERROR("SSL_set_fd");
+        disconnect_server(server_sock);
+        return;
+    }
+    ret = SSL_connect(ssl);
+    if (ret != 1) {
+        PLOG_ERROR("SSL_connect");
+        SSL_get_error(ssl, ret);
+        disconnect_server(server_sock);
+        return;
+    }
+}
+
+/**
+ * @brief Establish SSL connection with client.
+ * 
+ * @param fd FD for client socket.
+ */
+void ssl_accept_client(int fd)
+{
+    struct sock_buf* sock_buf = NULL;
+    SSL* ssl = NULL;
+    int ret = 0;
+
+    sock_buf = sock_buf_get(fd);
+    ssl = SSL_new(ssl_ctx);
+    if (ssl == NULL) {
+        PLOG_ERROR("SSL_new");
+        disconnect_client(fd);
+        return;
+    }
+    sock_buf->ssl = ssl;
+    ret = SSL_set_fd(ssl, fd);
+    if (ret == 0) {
+        PLOG_ERROR("SSL_set_fd");
+        disconnect_client(fd);
+        return;
+    }
+    ret = SSL_accept(ssl);
+    if (ret != 1) {
+        LOG_ERROR("SSL_connect");
+        ERR_print_errors_fp(stderr);
+        disconnect_client(fd);
+        return;
+    }
 }
 
 /**
@@ -499,11 +587,15 @@ void handle_get_request(int fd,
  */
 void handle_connect_request(int fd, char* version, char* hostname, int port)
 {
-    /* TODO: Establish SSL connection with server. */
+    /* Establish SSL connection with server. */
     ssl_connect_server(hostname, port, fd);
+    LOG_INFO("established SSL connection with %s:%d", hostname, port);
 
-    /* TODO: Establish SSL connection with client. */
+    reply_connection_established(fd, version);
 
+    /* Establish SSL connection with client. */
+    ssl_accept_client(fd);
+    LOG_INFO("established SSL connection with client (fd %d)", fd);
 }
 
 /**
