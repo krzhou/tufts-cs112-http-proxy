@@ -41,7 +41,9 @@ LDFLAGS = -g3
 
 # Libraries needed for any of the programs that will be linked
 # -lnsl: network service library.
-LDLIBS = -lnsl
+# -lssl: secure socket layer library from OpenSSL.
+# -lcrypto: crypto library from OpenSSL.
+LDLIBS = -lnsl -lssl -lcrypto
 
 ############### Rules ###############
 .PHONY: all clean test valgrind-test
