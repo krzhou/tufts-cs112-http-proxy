@@ -168,26 +168,26 @@ echo
 
 # Test CONNECT method by cplusplus.com.
 name='cplusplus'
-url='https://www.cplusplus.com/reference/cstring/strcat/'
+url='https://www.cplusplus.com/'
 echo "CONNECT ${url}"
 echo 'direct access with response header'
 time \
 curl "${url}" \
---get --verbose --include \
+--get --insecure --verbose --include \
 --output ${name}-response.txt \
 --stderr ${name}-verbose.txt
 echo
 echo 'direct access with no response header'
 time \
 curl "${url}" \
---get --verbose \
+--get --insecure --verbose \
 --output ${name}-response-no-header.txt \
 --stderr ${name}-verbose-no-header.txt
 echo
 echo 'proxy access with response header'
 time \
 curl "${url}" \
---get --verbose --include \
+--get --insecure --verbose --include \
 --proxy ${proxy} \
 --output ${name}-response-proxy.txt \
 --stderr ${name}-verbose-proxy.txt
@@ -195,7 +195,7 @@ echo
 echo 'proxy access with no response header'
 time \
 curl "${url}" \
---get --verbose \
+--get --insecure --verbose \
 --proxy ${proxy} \
 --output ${name}-response-proxy-no-header.txt \
 --stderr ${name}-verbose-proxy-no-header.txt
@@ -214,21 +214,21 @@ echo "CONNECT ${url}"
 echo 'direct access with response header'
 time \
 curl "${url}" \
---get --verbose --include \
+--get --insecure --verbose --include \
 --output ${name}-response.txt \
 --stderr ${name}-verbose.txt
 echo
 echo 'direct access with no response header'
 time \
 curl "${url}" \
---get --verbose \
+--get --insecure --verbose \
 --output ${name}-response-no-header.txt \
 --stderr ${name}-verbose-no-header.txt
 echo
 echo 'proxy access with response header'
 time \
 curl "${url}" \
---get --verbose --include \
+--get --insecure --verbose --include \
 --proxy ${proxy} \
 --output ${name}-response-proxy.txt \
 --stderr ${name}-verbose-proxy.txt
@@ -236,7 +236,7 @@ echo
 echo 'proxy access with no response header'
 time \
 curl "${url}" \
---get --verbose \
+--get --insecure --verbose \
 --proxy ${proxy} \
 --output ${name}-response-proxy-no-header.txt \
 --stderr ${name}-verbose-proxy-no-header.txt
