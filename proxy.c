@@ -12,7 +12,7 @@
 **************************************************************/
 
 #include "cache.h"
-#include "http_parser.h"
+#include "http_utils.h"
 #include "logger.h"
 #include "sock_buf.h"
 #include <arpa/inet.h>

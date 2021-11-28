@@ -19,7 +19,7 @@ EXECUTABLES = proxy
 TESTS = test_logger test_sock_buf test_cache
 
 # Custom headers (.h files) in your directory.
-INCLUDES =
+INCLUDES = cache.h http_utils.h logger.h sock_buf.h
 
 # Compilor.
 CC= gcc
@@ -77,7 +77,7 @@ valgrind-test: all
 # Each executable depends on one or more .o files.
 # Those .o files are linked together to build the corresponding
 # executable.
-proxy: proxy.o logger.o cache.o sock_buf.o http_parser.o
+proxy: proxy.o logger.o cache.o sock_buf.o http_utils.o
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 test_logger: test_logger.o logger.o
