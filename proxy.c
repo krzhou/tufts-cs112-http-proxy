@@ -334,15 +334,18 @@ void disconnect_server(int fd)
     struct sock_buf* server_buf = NULL;
 
     /* Close SSL connection. */
-    server_buf = sock_buf_get(fd);
-    if (server_buf->ssl) {
+    if (sock_buf_is_ssl(fd)) {
+        /* Close SSL connection between the proxy and the server.*/
+        server_buf = sock_buf_get(fd);
         SSL_shutdown(server_buf->ssl);
         SSL_free(server_buf->ssl);
+        server_buf->ssl = NULL;
 
-        /* Close SSL connection of the corresponding client. */
+        /* Close SSL connection between the proxy and the client.*/
         client_buf = sock_buf_get(server_buf->peer);
         SSL_shutdown(client_buf->ssl);
         SSL_free(client_buf->ssl);
+        client_buf->ssl = NULL;
     }
     /* Close TCP connection. */
     close(fd);
@@ -366,10 +369,23 @@ void disconnect_client(int fd)
     struct sock_buf* server_buf = NULL;
 
     /* Close SSL connection. */
-    client_buf = sock_buf_get(fd);
-    if (client_buf->ssl) {
+    if (sock_buf_is_ssl(fd)) {
+        /* Close SSL connection between the proxy and the client.*/
+        client_buf = sock_buf_get(fd);
         SSL_shutdown(client_buf->ssl);
         SSL_free(client_buf->ssl);
+        client_buf->ssl = NULL;
+
+        /* Close SSL connection between the proxy and the server.*/
+        for (int i = 0; i < FD_SETSIZE; ++i) {
+            server_buf = sock_buf_get(i);
+            if (server_buf != NULL && server_buf->peer == fd) {
+                SSL_shutdown(server_buf->ssl);
+                SSL_free(server_buf->ssl);
+                server_buf->ssl = NULL;
+                disconnect_server(i);
+            }
+        }
     }
     /* Close TCP connection. */
     close(fd);
@@ -377,14 +393,6 @@ void disconnect_client(int fd)
     FD_CLR(fd, &active_fd_set);
     /* Remove socket buffer. */
     sock_buf_rm(fd);
-
-    /* Remove socket buffer of its requested servers. */
-    for (int i = 0; i < FD_SETSIZE; ++i) {
-        server_buf = sock_buf_get(i);
-        if (server_buf != NULL && server_buf->peer == fd) {
-            disconnect_server(i);
-        }
-    }
 
     LOG_INFO("disconnect client (fd: %d)", fd);
 }
@@ -395,71 +403,87 @@ void disconnect_client(int fd)
  * @param hostname Server hostname without port number.
  * @param port Server port number.
  * @param client_sock FD for client socket.
- * @return Socket of the new connected server.
+ * @return int Socket of the new connected server on success; -1 otherwise.
  */
-void ssl_connect_server(const char* hostname, int port, int fd)
+int ssl_connect_server(const char* hostname, int port, int client_sock)
 {
     int server_sock;
     struct sock_buf* sock_buf = NULL;
     SSL* ssl = NULL;
-    int ret = 0;
 
-    server_sock = connect_server(hostname, port, fd, NULL);
+    server_sock = connect_server(hostname, port, client_sock, NULL);
+    if (server_sock < 0) {
+        /* Fail to connect to the server. */
+        return -1;
+    }
     sock_buf = sock_buf_get(server_sock);
+    if (sock_buf == NULL) {
+        LOG_ERROR("unknown socket %d", client_sock);
+        return -1;
+    }
     ssl = SSL_new(ssl_ctx);
     if (ssl == NULL) {
-        PLOG_ERROR("SSL_new");
+        LOG_ERROR("SSL_new");
+        ERR_print_errors_fp(stderr);
         disconnect_server(server_sock);
-        return;
+        return -1;
+    }
+    if (SSL_set_fd(ssl, server_sock) == 0) {
+        LOG_ERROR("SSL_set_fd");
+        ERR_print_errors_fp(stderr);
+        disconnect_server(server_sock);
+        return -1;
+    }
+    if (SSL_connect(ssl) != 1) {
+        LOG_ERROR("SSL_connect");
+        ERR_print_errors_fp(stderr);
+        disconnect_server(server_sock);
+        return -1;
     }
     sock_buf->ssl = ssl;
-    ret = SSL_set_fd(ssl, server_sock);
-    if (ret == 0) {
-        PLOG_ERROR("SSL_set_fd");
-        disconnect_server(server_sock);
-        return;
-    }
-    ret = SSL_connect(ssl);
-    if (ret != 1) {
-        PLOG_ERROR("SSL_connect");
-        SSL_get_error(ssl, ret);
-        disconnect_server(server_sock);
-        return;
-    }
+    sock_buf->peer = client_sock;
+    return server_sock;
 }
 
 /**
  * @brief Establish SSL connection with client.
  * 
- * @param fd FD for client socket.
+ * @param client_sock FD for client socket.
+ * @param server_sock FD for client socket.
+ * @return int 0 on success; -1 otherwise.
  */
-void ssl_accept_client(int fd)
+int ssl_accept_client(int client_sock, int server_sock)
 {
     struct sock_buf* sock_buf = NULL;
     SSL* ssl = NULL;
-    int ret = 0;
 
-    sock_buf = sock_buf_get(fd);
+    sock_buf = sock_buf_get(client_sock);
+    if (sock_buf == NULL) {
+        LOG_ERROR("unknown socket %d", client_sock);
+        return -1;
+    }
     ssl = SSL_new(ssl_ctx);
     if (ssl == NULL) {
-        PLOG_ERROR("SSL_new");
-        disconnect_client(fd);
-        return;
+        LOG_ERROR("SSL_new");
+        ERR_print_errors_fp(stderr);
+        disconnect_client(client_sock);
+        return -1;
     }
-    sock_buf->ssl = ssl;
-    ret = SSL_set_fd(ssl, fd);
-    if (ret == 0) {
-        PLOG_ERROR("SSL_set_fd");
-        disconnect_client(fd);
-        return;
+    if (SSL_set_fd(ssl, client_sock) == 0) {
+        LOG_ERROR("SSL_set_fd");
+        ERR_print_errors_fp(stderr);
+        disconnect_client(client_sock);
+        return -1;
     }
-    ret = SSL_accept(ssl);
-    if (ret != 1) {
+    if (SSL_accept(ssl) != 1) {
         LOG_ERROR("SSL_connect");
         ERR_print_errors_fp(stderr);
-        disconnect_client(fd);
-        return;
+        disconnect_client(client_sock);
+        return -1;
     }
+    sock_buf->ssl = ssl;
+    sock_buf->peer = server_sock;
+    return 0;
 }
 
 /**
@@ -526,12 +550,22 @@ void handle_get_request(int fd,
                         char* url,
                         char* hostname,
                         int port) {
+    struct sock_buf* client_buf = NULL;
+    struct sock_buf* server_buf = NULL;
+    int is_ssl = 0;
     char* key = NULL;
     char* val = NULL;
     int val_len = 0;
     int age = 0;
     int n;
     int server_sock;
+
+    client_buf = sock_buf_get(fd);
+    if (client_buf == NULL) {
+        LOG_ERROR("unknown socket %d", fd);
+        return;
+    }
+    is_ssl = sock_buf_is_ssl(fd);
 
     /* Check cache. */
     /* Use hostname + url as cache key. */
@@ -562,14 +596,30 @@ void handle_get_request(int fd,
 
         /* Forward cached response to the client. */
         parse_body_head(val, val_len, &head, &head_len, &body, &body_len);
-        n = write(fd, head, head_len);
-        if (age_line != NULL) {
-            n = write(fd, age_line, strlen(age_line));
+        if (is_ssl) {
+            n = SSL_write(client_buf->ssl, head, head_len);
+            if (age_line != NULL) {
+                n = SSL_write(client_buf->ssl, age_line, strlen(age_line));
+            }
+            n = SSL_write(client_buf->ssl, "\r\n", strlen("\r\n"));
+            n = SSL_write(client_buf->ssl, body, body_len);
         }
-        n = write(fd, "\r\n", strlen("\r\n"));
-        n = write(fd, body, body_len);
+        else {
+            n = write(fd, head, head_len);
+            if (age_line != NULL) {
+                n = write(fd, age_line, strlen(age_line));
+            }
+            n = write(fd, "\r\n", strlen("\r\n"));
+            n = write(fd, body, body_len);
+        }
         if (n < 0) {
-            PLOG_ERROR("write");
+            if (is_ssl) {
+                ERR_print_errors_fp(stderr);
+                LOG_ERROR("SSL_write");
+            }
+            else {
+                PLOG_ERROR("write");
+            }
             disconnect_client(fd);
         }
         else if (n == 0) {
@@ -577,9 +627,9 @@ void handle_get_request(int fd,
             disconnect_client(fd);
         }
         else {
-          LOG_INFO("forward %d bytes from cache to client (fd %d)",
-                   val_len,
-                   fd);
+            LOG_INFO("forward %d bytes from cache to client (fd %d)",
+                     val_len,
+                     fd);
         }
 
         free(key);
@@ -598,18 +648,42 @@ void handle_get_request(int fd,
     LOG_INFO("cache miss");
 
     /* Connect the requested server. */
-    server_sock = connect_server(hostname, port, fd, key);
-    if (server_sock < 0) {
-        /* Fail to connect the request server. */
-        free(key);
-        key = NULL;
-        return;
+    if (is_ssl) {
+        server_sock = client_buf->peer;
+        server_buf = sock_buf_get(server_sock);
+        if (server_buf == NULL) {
+            LOG_ERROR("unknown socket %d", fd);
+            free(key);
+            key = NULL;
+            return;
+        }
+        server_buf->key = strdup(key);
+    }
+    else {
+        server_sock = connect_server(hostname, port, fd, key);
+        if (server_sock < 0) {
+            /* Fail to connect the request server. */
+            free(key);
+            key = NULL;
+            return;
+        }
     }
 
     /* Forward request to server. */
-    n = write(server_sock, request, request_len);
+    if (is_ssl) {
+        n = SSL_write(server_buf->ssl, request, request_len);
+    }
+    else {
+        n = write(server_sock, request, request_len);
+    }
     if (n < 0) {
-        PLOG_ERROR("write");
+        if (is_ssl) {
+            ERR_print_errors_fp(stderr);
+            LOG_ERROR("SSL_write");
+        }
+        else {
+            PLOG_ERROR("write");
+        }
         disconnect_server(server_sock);
     }
     if (n == 0) {
@@ -631,14 +705,23 @@ void handle_get_request(int fd,
  */
 void handle_connect_request(int fd, char* version, char* hostname, int port)
 {
+    int server_sock;
+
     /* Establish SSL connection with server. */
-    ssl_connect_server(hostname, port, fd);
+    server_sock = ssl_connect_server(hostname, port, fd);
+    if (server_sock < 0) {
+        LOG_ERROR("ssl_connect_server");
+        return;
+    }
     LOG_INFO("established SSL connection with %s:%d", hostname, port);
 
     reply_connection_established(fd, version);
 
     /* Establish SSL connection with client. */
-    ssl_accept_client(fd);
+    if (ssl_accept_client(fd, server_sock) < 0) {
+        LOG_ERROR("ssl_accept_client");
+        return;
+    }
     LOG_INFO("established SSL connection with client (fd %d)", fd);
 }
 
@@ -649,7 +732,7 @@ void handle_connect_request(int fd, char* version, char* hostname, int port)
  */
 void handle_client_request(int fd)
 {
-    struct sock_buf* sock_buf = sock_buf_get(fd);
+    struct sock_buf* sock_buf = NULL;
     char* request = NULL;
     int request_len = 0;
     char* method = NULL; /* Method field in client request. */
@@ -659,6 +742,7 @@ void handle_client_request(int fd)
     char* hostname = NULL; /* Server hostname without port number. */
     int port = -1; /* Server port in client request. 80 by default. */
 
+    sock_buf = sock_buf_get(fd);
     if (sock_buf == NULL) {
         return;
     }
@@ -686,9 +770,7 @@ void handle_client_request(int fd)
         if (strcmp(method, "GET") == 0) {
             LOG_INFO("handle GET method");
 
-            if (port < 0) {
-                port = 80; /* Default port for HTTP. */
-            }
+            port = 80; /* Default port for HTTP. */
             LOG_INFO("port: %d", port);
 
             handle_get_request(fd, request, request_len, url, hostname, port);
@@ -705,6 +787,7 @@ void handle_client_request(int fd)
         }
         else {
             LOG_ERROR("unsupported HTTP method");
+            /* TODO: handle_other_request() */
         }
 
         free(method);
@@ -733,48 +816,76 @@ void handle_server_response(int fd)
     char* response = NULL;
     int response_len = 0;
     int max_age = 3600;
-    struct sock_buf* sock_buf = sock_buf_get(fd);
+    struct sock_buf* server_buf = NULL;
     int n;
+    int is_ssl = 0;
 
-    if (sock_buf == NULL) {
+    server_buf = sock_buf_get(fd);
+    if (server_buf == NULL) {
+        LOG_ERROR("unknown socket %d", server_buf);
         return;
     }
+    is_ssl = sock_buf_is_ssl(fd);
 
     /* Extract the leading completed response. */
-    if (extract_first_response(&(sock_buf->buf),
-                                &(sock_buf->size),
+    if (extract_first_response(&(server_buf->buf),
+                                &(server_buf->size),
                                 &response,
                                 &response_len,
                                 &max_age,
-                                &(sock_buf->is_chunked)) == 0) {
+                                &(server_buf->is_chunked)) == 0) {
         /* Response is incomplete.*/
         return;
     }
 
     /* Cache response. */
-    if (cache_put(sock_buf->key, response, response_len, max_age) == 0) {
+    if (cache_put(server_buf->key, response, response_len, max_age) == 0) {
         LOG_ERROR("fail to cache server response");
     }
 
     /* Forward response to client. */
-    n = write(sock_buf->peer, response, response_len);
+    if (is_ssl) {
+        struct sock_buf* client_buf = NULL;
+
+        client_buf = sock_buf_get(server_buf->peer);
+        if (client_buf == NULL) {
+            LOG_ERROR("unknown socket %d", client_buf);
+            return;
+        }
+        if (!sock_buf_is_ssl(server_buf->peer)) {
+            LOG_ERROR("client is not in SSL connection");
+            return;
+        }
+        n = SSL_write(client_buf->ssl, response, response_len);
+    }
+    else {
+        n = write(server_buf->peer, response, response_len);
+    }
     if (n < 0) {
-        PLOG_ERROR("write");
-        disconnect_client(sock_buf->peer);
+        if (is_ssl) {
+            LOG_ERROR("SSL_write");
+            ERR_print_errors_fp(stderr);
+        }
+        else {
+            PLOG_ERROR("write");
+        }
+        disconnect_client(server_buf->peer);
     }
     else if (n == 0) {
         LOG_ERROR("client socket is closed on the other side");
-        disconnect_client(sock_buf->peer);
+        disconnect_client(server_buf->peer);
     }
     else {
         LOG_INFO("forward %d bytes from server (fd %d) to client (fd %d)",
                 response_len,
                 fd,
-                sock_buf->peer);
+                server_buf->peer);
     }
 
     /* Disconnect server. */
-    disconnect_server(fd);
+    if (!is_ssl) {
+        disconnect_server(fd);
+    }
 
     free(response);
     response = NULL;
@@ -791,6 +902,7 @@ void handle_msg(int fd)
     char buf[BUF_SIZE]; /* Message buffer. */
     int n; /* Byte size actually received or sent. */
     int is_client = 0; /* Whether this socket is for a client. */
+    int is_ssl = 0; /* Whether this socket is one end of a SSL connection. */
 
     sock_buf = sock_buf_get(fd);
     if (sock_buf == NULL) {
@@ -798,12 +910,24 @@ void handle_msg(int fd)
         return;
     }
     is_client = sock_buf_is_client(fd);
+    is_ssl = sock_buf_is_ssl(fd);
 
     /* Receive message. */
     bzero(buf, BUF_SIZE);
-    n = read(fd, buf, BUF_SIZE);
+    if (is_ssl) {
+        n = SSL_read(sock_buf->ssl, buf, BUF_SIZE);
+    }
+    else {
+        n = read(fd, buf, BUF_SIZE);
+    }
     if (n < 0) {
-        PLOG_ERROR("read");
+        if (is_ssl) {
+            ERR_print_errors_fp(stderr);
+            LOG_ERROR("SSL_read");
+        }
+        else {
+            PLOG_ERROR("read");
+        }
         if (is_client) {
             disconnect_client(fd);
             return;
@@ -826,12 +950,12 @@ void handle_msg(int fd)
             return;
         }
     }
-    #if 1
+    #if 0
     if (is_client) {
-        LOG_INFO("received %d bytes from client (fd: %d)", n, fd);
+        LOG_INFO("received %d bytes from client (fd: %d): %s", n, fd, buf);
     }
     else {
-        LOG_INFO("received %d bytes from server (fd: %d)", n, fd);
+        LOG_INFO("received %d bytes from server (fd: %d): %s", n, fd, buf);
     }
     #endif
 
