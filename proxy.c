@@ -30,13 +30,15 @@
 #include <unistd.h>
 
 #define BUF_SIZE 8192
+#define CERT_FILE "cert.pem"
+#define KEY_FILE "key.pem"
 
 static int listen_port; /* Port that proxy listens on. */
 static int listen_sock; /* Listening socket of the proxy. */
 static fd_set active_fd_set; /* FD sets of all active sockets. */
 static fd_set read_fd_set;   /* FD sets of all sockets read to be read. */
 static int max_fd = 4; /* Largest used FD so far. */
-static SSL_CTX* ssl_ctx; /* SSL context. */
+static SSL_CTX* ssl_ctx; /* SSL context for this proxy. */
 
 /**
  * @brief Initialzed a listening socket that listens on the given port.
@@ -81,6 +83,68 @@ int init_listen_sock(int port)
 }
 
 /**
+ * @brief Initialize SSL library.
+ */
+void init_ssl(void)
+{
+    /* Register libcrypto and libssl error strings. */
+    SSL_load_error_strings();
+
+    /* Register available SSL/TLS ciphers and digests. */
+    SSL_library_init();
+
+    /* Add all digest and cipher algoritms to the table. */
+    OpenSSL_add_all_algorithms();
+
+    /* Create a new SSL_CTX object as framework for TLS/SSL functions. */
+    ssl_ctx = SSL_CTX_new(SSLv23_method());
+    if (ssl_ctx == NULL) {
+        ERR_print_errors_fp(stderr);
+        LOG_FATAL("SSL_CTX_new");
+    }
+
+    /*  Load certificates. */
+    if (SSL_CTX_use_certificate_file(ssl_ctx,
+                                     CERT_FILE,
+                                     SSL_FILETYPE_PEM) != 1) {
+        ERR_print_errors_fp(stderr);
+        LOG_FATAL("SSL_CTX_use_certificate_file");
+    }
+
+    /* Load private key and implicitly check the consistency of the private key
+     * with the certificate. */
+    if (SSL_CTX_use_PrivateKey_file(ssl_ctx,
+                                    KEY_FILE,
+                                    SSL_FILETYPE_PEM) != 1) {
+        ERR_print_errors_fp(stderr);
+        LOG_FATAL("SSL_CTX_use_PrivateKey_file");
+    }
+}
+
+/**
+ * @brief Clear data structure for SSL library.
+ */
+void clear_ssl(void)
+{
+    /* SSL context for this proxy. */
+    SSL_CTX_free(ssl_ctx);
+
+    /* Free SSL_COMP_get_compression_methods() called by SSL_library_init(). */
+    sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
+
+    /* Remove all cipher and digest algorithms from the table. */
+    EVP_cleanup();
+
+    CRYPTO_cleanup_all_ex_data();
+
+    /* Free the error queue associated with the current thread. */
+    ERR_remove_thread_state(NULL);
+
+    /* Free all loaded error strings. */
+    ERR_free_strings();
+}
+
+/**
  * @brief Initialize the proxy.
  */
 void init_proxy(void)
@@ -92,27 +156,7 @@ void init_proxy(void)
     }
     LOG_INFO("listen on port %d", listen_port);
 
-    /* Init SSL. */
-    SSL_library_init();
-    OpenSSL_add_all_algorithms();
-    SSL_load_error_strings();
-    ssl_ctx = SSL_CTX_new(SSLv23_method());
-    if (ssl_ctx == NULL) {
-        ERR_print_errors_fp(stderr);
-        exit(EXIT_FAILURE);
-    }
-    /*  Load certificates. */
-    if (SSL_CTX_use_certificate_file(ssl_ctx, "localhost.cert", SSL_FILETYPE_PEM) <= 0) {
-        LOG_ERROR("SSL_CTX_use_certificate_file");
-        ERR_print_errors_fp(stderr);
-        exit(EXIT_FAILURE);
-    }
-    /* Load private key. */
-    if (SSL_CTX_use_PrivateKey_file(ssl_ctx, "localhost.key", SSL_FILETYPE_PEM) <= 0) {
-        LOG_ERROR("SSL_CTX_use_PrivateKey_file");
-        ERR_print_errors_fp(stderr);
-        exit(EXIT_FAILURE);
-    }
+    init_ssl();
 
     /* Init FD set for select(). */
     FD_ZERO(&active_fd_set);
@@ -144,7 +188,7 @@ void clear_proxy(void)
     /* Free socket buffer array. */
     sock_buf_arr_clear();
 
-    SSL_CTX_free(ssl_ctx);
+    clear_ssl();
 }
 
 /**
