@@ -18,12 +18,14 @@
 #include <openssl/ssl.h>
 
 struct sock_buf {
-    char* msg;
-    int len;
-    int client; /* FD for client socket; -1 for client. */
-    time_t last_access;
-    char* key; /* String of key, i.e. hostname + url from the GET request. */
-    SSL* ssl; /* SSL structure for SSL connection. */
+    char* buf; /* Buffer for plaintext received from the socket. */
+    int size; /* Byte size of buffered data. */
+    time_t last_input; /* Time for the last input to the buffer. */
+    int is_client; /* Whether the socket is for a client. */
+    SSL* ssl; /* SSL structure for SSL/TLS connection. */
+    int peer; /* Socket FD for the other end of the connection regardless of
+               * proxy. */
+    char* key; /* Key for the cached server response. */
 };
 
 /**

@@ -22,7 +22,7 @@ static struct sock_buf *sock_buf_arr[FD_SETSIZE];
 /**
  * @brief Create an empty socket message buffer array.
  *
- * @return int 0 if succeed; -1 otherwise.
+ * @return int 0 on success; -1 otherwise.
  */
 int sock_buf_arr_init(void)
 {
@@ -35,7 +35,7 @@ int sock_buf_arr_init(void)
 /**
  * @brief Cleanup the socket message buffer array.
  *
- * @return int 0 if succeed; -1 otherwise.
+ * @return int 0 on success; -1 otherwise.
  */
 int sock_buf_arr_clear(void)
 {
@@ -56,12 +56,10 @@ int is_valid_fd(int fd) {
 }
 
 /**
- * @brief Add socket message buffer of the given FD.
+ * @brief Add socket message buffer for a client.
  * 
  * @param fd FD for socket.
- * @return int Number of socket message buffer added, i.e. 1 if succeeds; 0
- * otherwise.
- * @return int Number of added client buffer, i.e. 1 on success; 0 otherwise.
+ * @return int Number of socket buffer added, i.e. 1 on success; 0; otherwise.
  */
 int sock_buf_add_client(int fd)
 {
@@ -76,12 +74,13 @@ int sock_buf_add_client(int fd)
         PLOG_ERROR("malloc");
         return 0;
     }
-    new_sock_buf->msg = NULL;
-    new_sock_buf->len = 0;
-    new_sock_buf->client = -1;
-    new_sock_buf->last_access = 0;
-    new_sock_buf->key = NULL;
+    new_sock_buf->buf = NULL;
+    new_sock_buf->size = 0;
+    new_sock_buf->last_input = 0;
+    new_sock_buf->is_client = 1;
     new_sock_buf->ssl = NULL;
+    new_sock_buf->peer = -1;
+    new_sock_buf->key = NULL;
     sock_buf_arr[fd] = new_sock_buf;
     return 1;
 }
@@ -90,10 +89,8 @@ int sock_buf_add_client(int fd)
  * @brief Add socket message buffer of the given FD.
  * 
  * @param fd FD for socket.
- * @return int Number of socket message buffer added, i.e. 1 if succeeds; 0
- * otherwise.
  * @param key String of cache key, i.e. hostname + url in GET request.
- * @return int Number of added server buffer, i.e. 1 on success; 0 otherwise.
+ * @return int Number of socket buffer added, i.e. 1 on success; 0 otherwise.
  */
 int sock_buf_add_server(int fd, int client, char* key)
 {
@@ -111,12 +108,13 @@ int sock_buf_add_server(int fd, int client, char* key)
         PLOG_ERROR("malloc");
         return 0;
     }
-    new_sock_buf->msg = NULL;
-    new_sock_buf->len = 0;
-    new_sock_buf->client = client;
-    new_sock_buf->last_access = 0;
-    new_sock_buf->key = NULL;
+    new_sock_buf->buf = NULL;
+    new_sock_buf->size = 0;
+    new_sock_buf->last_input = 0;
+    new_sock_buf->is_client = 0;
     new_sock_buf->ssl = NULL;
+    new_sock_buf->peer = client;
+    new_sock_buf->key = NULL;
     if (key != NULL) {
         new_sock_buf->key = strdup(key);
     }
@@ -128,8 +126,7 @@ int sock_buf_add_server(int fd, int client, char* key)
  * @brief Remove socket message buffer of the given FD.
  * 
  * @param fd FD for socket.
- * @return int Number of socket message buffer removed, i.e. 1 if succeeds; 0
- * otherwise.
+ * @return int Number of socket buffer removed, i.e. 1 on success; 0 otherwise.
  */
 int sock_buf_rm(int fd)
 {
@@ -137,8 +134,11 @@ int sock_buf_rm(int fd)
         return 0;
     }
 
-    free(sock_buf_arr[fd]->msg);
+    free(sock_buf_arr[fd]->buf);
     free(sock_buf_arr[fd]->key);
+    if (sock_buf_arr[fd]->ssl != NULL) {
+        SSL_free(sock_buf_arr[fd]->ssl);
+    }
     free(sock_buf_arr[fd]);
     sock_buf_arr[fd] = NULL;
     return 1;
