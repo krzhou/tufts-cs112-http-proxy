@@ -340,7 +340,7 @@ void disconnect_server(int fd)
         SSL_free(server_buf->ssl);
 
         /* Close SSL connection of the corresponding client. */
-        client_buf = sock_buf_get(server_buf->client);
+        client_buf = sock_buf_get(server_buf->peer);
         SSL_shutdown(client_buf->ssl);
         SSL_free(client_buf->ssl);
     }
@@ -381,7 +381,7 @@ void disconnect_client(int fd)
     /* Remove socket buffer of its requested servers. */
     for (int i = 0; i < FD_SETSIZE; ++i) {
         server_buf = sock_buf_get(i);
-        if (server_buf != NULL && server_buf->client == fd) {
+        if (server_buf != NULL && server_buf->peer == fd) {
             disconnect_server(i);
         }
     }
@@ -664,8 +664,8 @@ void handle_client_request(int fd)
     }
 
     /* Extract the leading completed request. */
-    while (extract_first_request(&(sock_buf->msg),
-                                 &(sock_buf->len),
+    while (extract_first_request(&(sock_buf->buf),
+                                 &(sock_buf->size),
                                  &request,
                                  &request_len) > 0) {
         /* Parse request. */
@@ -741,8 +741,8 @@ void handle_server_response(int fd)
     }
 
     /* Extract the leading completed response. */
-    if (extract_first_response(&(sock_buf->msg),
-                                &(sock_buf->len),
+    if (extract_first_response(&(sock_buf->buf),
+                                &(sock_buf->size),
                                 &response,
                                 &response_len,
                                 &max_age) == 0) {
@@ -756,20 +756,20 @@ void handle_server_response(int fd)
     }
 
     /* Forward response to client. */
-    n = write(sock_buf->client, response, response_len);
+    n = write(sock_buf->peer, response, response_len);
     if (n < 0) {
         PLOG_ERROR("write");
-        disconnect_client(sock_buf->client);
+        disconnect_client(sock_buf->peer);
     }
     else if (n == 0) {
         LOG_ERROR("client socket is closed on the other side");
-        disconnect_client(sock_buf->client);
+        disconnect_client(sock_buf->peer);
     }
     else {
         LOG_INFO("forward %d bytes from server (fd %d) to client (fd %d)",
                 response_len,
                 fd,
-                sock_buf->client);
+                sock_buf->peer);
     }
 
     /* Disconnect server. */
@@ -796,7 +796,7 @@ void handle_msg(int fd)
         LOG_ERROR("unknown socket %d", fd);
         return;
     }
-    is_client = sock_buf->client < 0;
+    is_client = sock_buf_is_client(fd);
 
     /* Receive message. */
     bzero(buf, BUF_SIZE);
@@ -835,9 +835,10 @@ void handle_msg(int fd)
     #endif
 
     /* Write received message into socket buffer. */
-    sock_buf->msg = realloc(sock_buf->msg, sock_buf->len + n);
-    memcpy(sock_buf->msg + sock_buf->len, buf, n);
-    sock_buf->len += n;
+    if (sock_buf_input(fd, buf, n) < 0) {
+        PLOG_ERROR("sock_buf_input");
+        return;
+    }
 
     /* Parse socket buffer. */
     if (is_client) {
