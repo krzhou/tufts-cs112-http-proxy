@@ -158,3 +158,58 @@ struct sock_buf* sock_buf_get(int fd)
     }
     return sock_buf_arr[fd];
 }
+
+/**
+ * @brief Whether the given socket is for a client.
+ *
+ * @param fd FD for socket.
+ * @return int 1 if the socket is for a client; 0 otherwise (typically, the
+ * socket is for a server).
+ */
+int sock_buf_is_client(int fd)
+{
+    if (!is_valid_fd(fd) || sock_buf_arr[fd] == NULL) {
+        return 0;
+    }
+    return sock_buf_arr[fd]->is_client;
+}
+
+/**
+ * @brief Whether the given socket is one end of a SSL/TLS connection.
+ *
+ * @param fd FD for socket.
+ * @return int 1 if the socket is one end of a SSL/TLS connection.
+ */
+int sock_buf_is_ssl(int fd)
+{
+    if (!is_valid_fd(fd) || sock_buf_arr[fd] == NULL) {
+        return 0;
+    }
+    return sock_buf_arr[fd]->ssl != NULL;
+}
+
+/**
+ * @brief Buffer the received data.
+ *
+ * @param fd FD for socket.
+ * @param data  Received data.
+ * @param size Byte size of received data.
+ * @return int Byte size of buffered data on success; -1 otherwise.
+ */
+int sock_buf_input(int fd, char* data, int size)
+{
+    char* ret = NULL;
+
+    if (!is_valid_fd(fd) || sock_buf_arr[fd] == NULL) {
+        return -1;
+    }
+
+    ret = realloc(sock_buf_arr[fd]->buf, sock_buf_arr[fd]->size + size);
+    if (ret == NULL) {
+        return -1;
+    }
+    sock_buf_arr[fd]->buf = ret;
+    memcpy(sock_buf_arr[fd]->buf + sock_buf_arr[fd]->size, data, size);
+    sock_buf_arr[fd]->size += size;
+    return size;
+}

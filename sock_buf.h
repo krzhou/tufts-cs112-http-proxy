@@ -81,4 +81,31 @@ int sock_buf_rm(int fd);
  */
 struct sock_buf* sock_buf_get(int fd);
 
+/**
+ * @brief Whether the given socket is for a client.
+ *
+ * @param fd FD for socket.
+ * @return int 1 if the socket is for a client; 0 otherwise (typically, the
+ * socket is for a server).
+ */
+int sock_buf_is_client(int fd);
+
+/**
+ * @brief Whether the given socket is one end of a SSL/TLS connection.
+ *
+ * @param fd FD for socket.
+ * @return int 1 if the socket is one end of a SSL/TLS connection.
+ */
+int sock_buf_is_ssl(int fd);
+
+/**
+ * @brief Buffer the received data.
+ *
+ * @param fd FD for socket.
+ * @param data  Received data.
+ * @param size Byte size of received data.
+ * @return int Byte size of buffered data on success; -1 otherwise.
+ */
+int sock_buf_input(int fd, char* data, int size);
+
 #endif /* SOCK_BUF_H */
