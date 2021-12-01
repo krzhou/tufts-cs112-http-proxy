@@ -835,7 +835,7 @@ void handle_msg(int fd)
     #endif
 
     /* Write received message into socket buffer. */
-    if (sock_buf_input(fd, buf, n) < 0) {
+    if (sock_buf_buffer(fd, buf, n) < 0) {
         PLOG_ERROR("sock_buf_input");
         return;
     }

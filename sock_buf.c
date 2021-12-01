@@ -196,7 +196,7 @@ int sock_buf_is_ssl(int fd)
  * @param size Byte size of received data.
  * @return int Byte size of buffered data on success; -1 otherwise.
  */
-int sock_buf_input(int fd, char* data, int size)
+int sock_buf_buffer(int fd, char* data, int size)
 {
     char* ret = NULL;
 
