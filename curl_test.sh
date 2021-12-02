@@ -248,35 +248,35 @@ echo
 # diff ${name}-response-no-header.txt ${name}-response-proxy-no-header.txt
 # echo
 
-# # Test with SCP wiki, which uses chunked transfer encoding.
-# name='scp'
-# url='http://scp-wiki-cn.wikidot.com/'
-# echo "GET ${url}"
-# # Direct access with response header.
-# curl "${url}" \
-# --get --verbose --include \
-# --output ${name}-response.txt \
-# --stderr ${name}-verbose.txt
-# # Direct access with no response header.
-# curl "${url}" \
-# --get --verbose \
-# --output ${name}-response-no-header.txt \
-# --stderr ${name}-verbose-no-header.txt
-# # Proxy access with response header.
-# curl "${url}" \
-# --get --verbose --include \
-# --proxy ${proxy} \
-# --output ${name}-response-proxy.txt \
-# --stderr ${name}-verbose-proxy.txt
-# # Proxy access with no response header.
-# curl "${url}" \
-# --get --verbose \
-# --proxy ${proxy} \
-# --output ${name}-response-proxy-no-header.txt \
-# --stderr ${name}-verbose-proxy-no-header.txt
-# # Compare direct and proxy access.
-# echo '- compare with response header'
-# diff ${name}-response.txt ${name}-response-proxy.txt
-# echo '- compare with no response header'
-# diff ${name}-response-no-header.txt ${name}-response-proxy-no-header.txt
-# echo
+# Test with SCP wiki, which uses chunked transfer encoding.
+name='scp'
+url='http://scp-wiki-cn.wikidot.com/'
+echo "GET ${url}"
+# Direct access with response header.
+curl "${url}" \
+--get --verbose --include \
+--output ${name}-response.txt \
+--stderr ${name}-verbose.txt
+# Direct access with no response header.
+curl "${url}" \
+--get --verbose \
+--output ${name}-response-no-header.txt \
+--stderr ${name}-verbose-no-header.txt
+# Proxy access with response header.
+curl "${url}" \
+--get --verbose --include \
+--proxy ${proxy} \
+--output ${name}-response-proxy.txt \
+--stderr ${name}-verbose-proxy.txt
+# Proxy access with no response header.
+curl "${url}" \
+--get --verbose \
+--proxy ${proxy} \
+--output ${name}-response-proxy-no-header.txt \
+--stderr ${name}-verbose-proxy-no-header.txt
+# Compare direct and proxy access.
+echo '- compare with response header'
+diff ${name}-response.txt ${name}-response-proxy.txt
+echo '- compare with no response header'
+diff ${name}-response-no-header.txt ${name}-response-proxy-no-header.txt
+echo
