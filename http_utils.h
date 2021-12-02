@@ -134,9 +134,10 @@ int extract_first_request(char** buf,
  * @return int Number of extracted response, i.e. 1 on success; 0 otherwise.
  */
 int extract_first_response(char** buf,
-                          int* n,
-                          char** out_request,
-                          int* out_len,
-                          int* out_max_age);
+                           int* n,
+                           char** out_request,
+                           int* out_len,
+                           int* out_max_age,
+                           int* is_chunked);
 
 #endif /* HTTP_PARSER_H */

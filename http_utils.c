@@ -476,28 +476,32 @@ int extract_first_request(char** buf,
 
 /**
  * @brief Extract the first complete HTTP response from buf.
- * 
+ *
  * @param buf Buffer may contain a HTTP response.
  * @param n Byte size of the buffer.
- * @param out_response Output: String of the first HTTP response in buffer if the
- * response is completed; it is not changed otherwise.
+ * @param out_response Output: String of the first HTTP response in buffer if
+ * the response is completed; it is not changed otherwise.
  * @param out_len Output; Byte size of response if it is completed; it is not
  * changed otherwise.
  * @param out_max_age Output: Max age (time-to-live) for the response in cache.
+ * @param is_chunked 1 if the transfer encoding response is known to be chunked;
+ * 0 if it is unknown or is not chunked. After calling this function, is_chunked
+ * will be set to 1 if it is found that the transfer encoding of this response
+ * is chunked.
  * @return int Number of extracted response, i.e. 1 on success; 0 otherwise.
  */
 int extract_first_response(char** buf,
-                          int* n,
-                          char** out_request,
-                          int* out_len,
-                          int* out_max_age) {
+                           int* n,
+                           char** out_response,
+                           int* out_len,
+                           int* out_max_age,
+                           int* is_chunked) {
     char* st = NULL;
     char* end = NULL;
     int len = 0;
     char* name = NULL; /* Field name of a header line. */
     char* value = NULL; /* Field value of a header line. */
     int content_length = 0;
-    char* cache_control = NULL;
 
     if (buf == NULL || *buf == NULL) {
         return 0;
@@ -518,6 +522,7 @@ int extract_first_response(char** buf,
     st += strlen("\r\n"); /* Start of the first header line. */
 
     /* Get content length and cache control. */
+    *out_max_age = 3600; /* 1h by default. */
     while (st < end) {
         len = parse_header_line(st, &name, &value);
         if (name != NULL) {
@@ -525,8 +530,12 @@ int extract_first_response(char** buf,
                 content_length = atoi(value);
             }
             else if (strcmp(name, "Cache-Control") == 0) {
-                cache_control = value;
-                value = NULL;
+                parse_cache_control(value, out_max_age);
+                /* TODO: Handle other cache-control value. */
+            }
+            else if (strcmp(name, "Transfer-Encoding") == 0 &&
+                     strcmp(value, "chunked") == 0) {
+                *is_chunked = 1;
             }
         }
         free(name);
@@ -536,21 +545,65 @@ int extract_first_response(char** buf,
         st += len;
     }
 
-    /* Get max age. */
-    *out_max_age = 3600; /* 1h by default. */
-    /* TODO: Handle other cache-control value. */
-    parse_cache_control(cache_control, out_max_age);
-
-    /* Check body size. */
+    /* Check the completeness of body. */
     st = end + strlen("\r\n"); /* Start of body. */
-    if (*n - (end - *buf) < content_length) {
-        /* Body is incomplete. */
-        return 0;
+    if (*is_chunked) {
+        long chunk_size = 0;
+
+        if (*n - 5 >= 0 && strncmp(&(*buf)[*n - 5], "0\r\n\r\n", 5) != 0) {
+            /* Body is incomplete. */
+            return 0;
+        }
+        /* The last 5 char in buffer fit the end of chunked response. */
+        /* Check completeness of each chunk. */
+        end = st;
+        while (1) {
+            /* Get claimed chunk size. */
+            chunk_size = strtol(end, &end, 16);
+            if (chunk_size == 0 &&
+                *n - (end - *buf) == 4 &&
+                strncmp(end, "\r\n\r\n", 4) == 0) {
+                /* Response is complete. */
+                break;
+            }
+            /* Skip "\r\n". */
+            if (*n - (end - *buf) < 2) {
+                /* Chunk is incomplete. */
+                return 0;
+            }
+            if (strncmp(end, "\r\n", 2) != 0) {
+                /* Violate chunk format. */
+                return 0;
+            }
+            end += 2; /* Start of chunk data. */
+            /* Check actual chunk size. */
+            if (*n - (end - *buf) < chunk_size) {
+                /* Chunk is incomplete. */
+                return 0;
+            }
+            end += chunk_size;
+            /* Skip "\r\n" */
+            if (*n - (end - *buf) < 2) {
+                /* Chunk is incomplete. */
+                return 0;
+            }
+            if (strncmp(end, "\r\n", 2) != 0) {
+                /* Violate chunk format. */
+                return 0;
+            }
+            end += 2; /* Start of chunk size. */
+        }
+    }
+    else {
+        if (*n - (end - *buf) < content_length) {
+            /* Body is incomplete. */
+            return 0;
+        }
     }
     /* From now on, body is completed. */
 
     /* Return the request. */
-    *out_request = *buf;
+    *out_response = *buf;
     *out_len = *n;
     *buf = NULL;
     *n = 0;

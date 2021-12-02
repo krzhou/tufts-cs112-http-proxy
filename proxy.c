@@ -745,7 +745,8 @@ void handle_server_response(int fd)
                                 &(sock_buf->size),
                                 &response,
                                 &response_len,
-                                &max_age) == 0) {
+                                &max_age,
+                                &(sock_buf->is_chunked)) == 0) {
         /* Response is incomplete.*/
         return;
     }

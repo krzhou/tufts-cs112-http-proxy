@@ -81,6 +81,7 @@ int sock_buf_add_client(int fd)
     new_sock_buf->ssl = NULL;
     new_sock_buf->peer = -1;
     new_sock_buf->key = NULL;
+    new_sock_buf->is_chunked = 0;
     sock_buf_arr[fd] = new_sock_buf;
     return 1;
 }
@@ -118,6 +119,7 @@ int sock_buf_add_server(int fd, int client, char* key)
     if (key != NULL) {
         new_sock_buf->key = strdup(key);
     }
+    new_sock_buf->is_chunked = 0;
     sock_buf_arr[fd] = new_sock_buf;
     return 1;
 }

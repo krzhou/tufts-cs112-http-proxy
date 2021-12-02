@@ -26,6 +26,7 @@ struct sock_buf {
     int peer; /* Socket FD for the other end of the connection regardless of
                * proxy. */
     char* key; /* Key for the cached server response. */
+    int is_chunked; /* 1 for "Transfer-Encoding: chunked"; 0 otherwise. */
 };
 
 /**
