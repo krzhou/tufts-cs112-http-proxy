@@ -18,6 +18,7 @@
 #include <sys/select.h>
 
 static struct sock_buf *sock_buf_arr[FD_SETSIZE];
+static const time_t TIMEOUT = 600; /* Timeout for idle socket buffer. */
 
 /**
  * @brief Create an empty socket message buffer array.
@@ -76,7 +77,7 @@ int sock_buf_add_client(int fd)
     }
     new_sock_buf->buf = NULL;
     new_sock_buf->size = 0;
-    new_sock_buf->last_input = 0;
+    new_sock_buf->last_input = time(NULL);
     new_sock_buf->is_client = 1;
     new_sock_buf->is_forward = 0;
     new_sock_buf->ssl = NULL;
@@ -112,7 +113,7 @@ int sock_buf_add_server(int fd, int client, char* key)
     }
     new_sock_buf->buf = NULL;
     new_sock_buf->size = 0;
-    new_sock_buf->last_input = 0;
+    new_sock_buf->last_input = time(NULL);
     new_sock_buf->is_client = 0;
     new_sock_buf->is_forward = 0;
     new_sock_buf->ssl = NULL;
@@ -245,4 +246,17 @@ void sock_buf_update_input_time(int fd){
         return;
     }
     sock_buf_arr[fd]->last_input = time(NULL);
+}
+
+/**
+ * @brief Whether the socket is timeout (current time - last_input > TIMEOUT).
+ *
+ * @param fd FD for socket.
+ * @return int 1 if it should simply forward the data; 0 otherwise.
+ */
+int sock_buf_is_timeout(int fd) {
+    if (!is_valid_fd(fd) || sock_buf_arr[fd] == NULL) {
+        return 0;
+    }
+    return time(NULL) - sock_buf_arr[fd]->last_input > TIMEOUT;
 }

@@ -126,4 +126,13 @@ int sock_buf_is_forward(int fd);
  */
 void sock_buf_update_input_time(int fd);
 
+
+/**
+ * @brief Whether the socket is timeout (current time - last_input > TIMEOUT).
+ *
+ * @param fd FD for socket.
+ * @return int 1 if it should simply forward the data; 0 otherwise.
+ */
+int sock_buf_is_timeout(int fd);
+
 #endif /* SOCK_BUF_H */
