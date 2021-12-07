@@ -343,9 +343,11 @@ void disconnect_server(int fd)
 
         /* Close SSL connection between the proxy and the client.*/
         client_buf = sock_buf_get(server_buf->peer);
-        SSL_shutdown(client_buf->ssl);
-        SSL_free(client_buf->ssl);
-        client_buf->ssl = NULL;
+        if (client_buf->ssl != NULL) {
+            SSL_shutdown(client_buf->ssl);
+            SSL_free(client_buf->ssl);
+            client_buf->ssl = NULL;
+        }
     }
     /* Close TCP connection. */
     close(fd);
@@ -370,23 +372,17 @@ void disconnect_client(int fd)
 
     /* Close SSL connection. */
     if (sock_buf_is_ssl(fd)) {
-        /* Close SSL connection between the proxy and the client.*/
         client_buf = sock_buf_get(fd);
-        SSL_shutdown(client_buf->ssl);
-        SSL_free(client_buf->ssl);
-        client_buf->ssl = NULL;
-
-        /* Close SSL connection between the proxy and the server.*/
-        for (int i = 0; i < FD_SETSIZE; ++i) {
-            server_buf = sock_buf_get(i);
-            if (server_buf != NULL && server_buf->peer == fd) {
-                SSL_shutdown(server_buf->ssl);
-                SSL_free(server_buf->ssl);
-                server_buf->ssl = NULL;
-                disconnect_server(i);
-            }
+        disconnect_server(client_buf->peer);
+    }
+    /* Close connected server without SSL. */
+    for (int i = 0; i <= max_fd; ++i) {
+        server_buf = sock_buf_get(i);
+        if (server_buf != NULL && server_buf->peer == fd) {
+            disconnect_server(i);
         }
     }
+
     /* Close TCP connection. */
     close(fd);
     /* Remove from FD set for select(). */
@@ -476,7 +472,7 @@ int ssl_accept_client(int client_sock, int server_sock)
         return -1;
     }
     if (SSL_accept(ssl) != 1) {
-        LOG_ERROR("SSL_connect");
+        LOG_ERROR("SSL_accept");
         ERR_print_errors_fp(stderr);
         disconnect_client(client_sock);
         return -1;
@@ -741,11 +737,13 @@ void handle_client_request(int fd)
     char* host = NULL; /* Host field in client request. */
     char* hostname = NULL; /* Server hostname without port number. */
     int port = -1; /* Server port in client request. 80 by default. */
+    int is_ssl = 0; /* Whether the client is using SSL connection. */
 
     sock_buf = sock_buf_get(fd);
     if (sock_buf == NULL) {
         return;
     }
+    is_ssl = sock_buf_is_ssl(fd);
 
     /* Extract the leading completed request. */
     while (extract_first_request(&(sock_buf->buf),
@@ -769,8 +767,12 @@ void handle_client_request(int fd)
 
         if (strcmp(method, "GET") == 0) {
             LOG_INFO("handle GET method");
-
-            port = 80; /* Default port for HTTP. */
+            if (is_ssl) {
+                port = 443; /* Default port for SSL link. */
+            }
+            else {
+                port = 80; /* Default port for HTTP. */
+            }
             LOG_INFO("port: %d", port);
 
             handle_get_request(fd, request, request_len, url, hostname, port);
