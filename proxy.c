@@ -1082,6 +1082,9 @@ void handle_msg(int fd)
     }
     #endif
 
+    /* Update the last input time of the socket. */
+    sock_buf_update_input_time(fd);
+
     /* Forward encrypted messages originated from a CONNECT method. */
     if (is_forward) {
         #if 0
