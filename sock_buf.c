@@ -233,3 +233,16 @@ int sock_buf_is_forward(int fd)
     }
     return sock_buf_arr[fd]->is_forward;
 }
+
+/**
+ * @brief Update last_input of a socket to the current time
+ *
+ * @param fd FD for socket.
+ * @return int 1 if it should simply forward the data; 0 otherwise.
+ */
+void sock_buf_update_input_time(int fd){
+    if (!is_valid_fd(fd) || sock_buf_arr[fd] == NULL) {
+        return;
+    }
+    sock_buf_arr[fd]->last_input = time(NULL);
+}
