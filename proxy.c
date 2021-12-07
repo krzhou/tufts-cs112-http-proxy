@@ -354,7 +354,7 @@ void disconnect_server(int fd)
 
         /* Close SSL connection between the proxy and the client.*/
         client_buf = sock_buf_get(server_buf->peer);
-        if (client_buf->ssl != NULL) {
+        if (client_buf != NULL && client_buf->ssl != NULL) {
             SSL_shutdown(client_buf->ssl);
             SSL_free(client_buf->ssl);
             client_buf->ssl = NULL;
