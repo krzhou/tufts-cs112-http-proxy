@@ -1169,6 +1169,15 @@ int main(int argc, char** argv)
                     handle_msg(fd);
                 }
             }
+            /*remove timeout socket*/
+            if (sock_buf_is_timeout(fd)) {
+                if (sock_buf_is_client(fd)) {
+                    disconnect_client(fd);
+                }
+                else {
+                    disconnect_server(fd);
+                }
+            }
         }
     }
 
