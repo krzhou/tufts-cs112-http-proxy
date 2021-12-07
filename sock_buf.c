@@ -78,6 +78,7 @@ int sock_buf_add_client(int fd)
     new_sock_buf->size = 0;
     new_sock_buf->last_input = 0;
     new_sock_buf->is_client = 1;
+    new_sock_buf->is_forward = 0;
     new_sock_buf->ssl = NULL;
     new_sock_buf->peer = -1;
     new_sock_buf->key = NULL;
@@ -113,6 +114,7 @@ int sock_buf_add_server(int fd, int client, char* key)
     new_sock_buf->size = 0;
     new_sock_buf->last_input = 0;
     new_sock_buf->is_client = 0;
+    new_sock_buf->is_forward = 0;
     new_sock_buf->ssl = NULL;
     new_sock_buf->peer = client;
     new_sock_buf->key = NULL;
@@ -216,4 +218,18 @@ int sock_buf_buffer(int fd, char* data, int size)
     memcpy(sock_buf_arr[fd]->buf + sock_buf_arr[fd]->size, data, size);
     sock_buf_arr[fd]->size += size;
     return size;
+}
+
+/**
+ * @brief Whether simply forward data from the given socket to its peer.
+ *
+ * @param fd FD for socket.
+ * @return int 1 if it should simply forward the data; 0 otherwise.
+ */
+int sock_buf_is_forward(int fd)
+{
+    if (!is_valid_fd(fd) || sock_buf_arr[fd] == NULL) {
+        return 0;
+    }
+    return sock_buf_arr[fd]->is_forward;
 }

@@ -22,6 +22,7 @@ struct sock_buf {
     int size; /* Byte size of buffered data. */
     time_t last_input; /* Time for the last input to the buffer. */
     int is_client; /* Whether the socket is for a client. */
+    int is_forward; /* Whether simply forward data to its peer. */
     SSL* ssl; /* SSL structure for SSL/TLS connection. */
     int peer; /* Socket FD for the other end of the connection regardless of
                * proxy. */
@@ -108,5 +109,13 @@ int sock_buf_is_ssl(int fd);
  * @return int Byte size of buffered data on success; -1 otherwise.
  */
 int sock_buf_buffer(int fd, char* data, int size);
+
+/**
+ * @brief Whether simply forward data from the given socket to its peer.
+ *
+ * @param fd FD for socket.
+ * @return int 1 if it should simply forward the data; 0 otherwise.
+ */
+int sock_buf_is_forward(int fd);
 
 #endif /* SOCK_BUF_H */

@@ -30,8 +30,6 @@
 #include <unistd.h>
 
 #define BUF_SIZE 8192
-#define CERT_FILE "cert.pem"
-#define KEY_FILE "key.pem"
 
 static int listen_port; /* Port that proxy listens on. */
 static int listen_sock; /* Listening socket of the proxy. */
@@ -39,6 +37,9 @@ static fd_set active_fd_set; /* FD sets of all active sockets. */
 static fd_set read_fd_set;   /* FD sets of all sockets read to be read. */
 static int max_fd = 4; /* Largest used FD so far. */
 static SSL_CTX* ssl_ctx; /* SSL context for this proxy. */
+static int use_ssl = 0; /* Whether to use SSL interception. */
+static const char* CERT_FILE = NULL; /* Certificate file for SSL. */
+static const char* KEY_FILE = NULL; /* Private key file for SSL. */
 
 /**
  * @brief Initialzed a listening socket that listens on the given port.
@@ -156,7 +157,9 @@ void init_proxy(void)
     }
     LOG_INFO("listen on port %d", listen_port);
 
-    init_ssl();
+    if (use_ssl) {
+        init_ssl();
+    }
 
     /* Init FD set for select(). */
     FD_ZERO(&active_fd_set);
@@ -174,6 +177,12 @@ void init_proxy(void)
  */
 void clear_proxy(void)
 {
+    /* Free LRU cache. */
+    cache_clear();
+
+    /* Free socket buffer array. */
+    sock_buf_arr_clear();
+
     /* Close all sockets. */
     for (int fd = 0; fd < FD_SETSIZE; ++fd) {
         if (FD_ISSET(fd, &active_fd_set)) {
@@ -182,13 +191,9 @@ void clear_proxy(void)
         }
     }
 
-    /* Free LRU cache. */
-    cache_clear();
-
-    /* Free socket buffer array. */
-    sock_buf_arr_clear();
-
-    clear_ssl();
+    if (use_ssl) {
+        clear_ssl();
+    }
 }
 
 /**
@@ -332,6 +337,12 @@ void disconnect_server(int fd)
 {
     struct sock_buf* client_buf = NULL;
     struct sock_buf* server_buf = NULL;
+    int is_forward = 0;
+    int peer;
+
+    if (sock_buf_get(fd) == NULL) {
+        return;
+    }
 
     /* Close SSL connection. */
     if (sock_buf_is_ssl(fd)) {
@@ -349,12 +360,28 @@ void disconnect_server(int fd)
             client_buf->ssl = NULL;
         }
     }
+
     /* Close TCP connection. */
     close(fd);
+
     /* Remove from FD set for select(). */
     FD_CLR(fd, &active_fd_set);
+
+    /* Find the peer that directly forward to. */
+    is_forward = sock_buf_is_forward(fd);
+    if (is_forward) {
+        /* Disconnect client that directly forward to. */
+        server_buf = sock_buf_get(fd);
+        peer = server_buf->peer;
+    }
+
     /* Remove socket buffer. */
     sock_buf_rm(fd);
+
+    /* Disconnect the peer that directly forward to. */
+    if (is_forward) {
+        disconnect_client(peer);
+    }
 
     LOG_INFO("disconnect server (fd: %d)", fd);
 }
@@ -367,28 +394,28 @@ void disconnect_server(int fd)
  */
 void disconnect_client(int fd)
 {
-    struct sock_buf* client_buf = NULL;
     struct sock_buf* server_buf = NULL;
 
-    /* Close SSL connection. */
-    if (sock_buf_is_ssl(fd)) {
-        client_buf = sock_buf_get(fd);
-        disconnect_server(client_buf->peer);
+    if (sock_buf_get(fd) == NULL) {
+        return;
     }
-    /* Close connected server without SSL. */
+
+    /* Close TCP connection. */
+    close(fd);
+
+    /* Remove from FD set for select(). */
+    FD_CLR(fd, &active_fd_set);
+
+    /* Remove socket buffer. */
+    sock_buf_rm(fd);
+
+    /* Close connected server. */
     for (int i = 0; i <= max_fd; ++i) {
         server_buf = sock_buf_get(i);
         if (server_buf != NULL && server_buf->peer == fd) {
             disconnect_server(i);
         }
     }
-
-    /* Close TCP connection. */
-    close(fd);
-    /* Remove from FD set for select(). */
-    FD_CLR(fd, &active_fd_set);
-    /* Remove socket buffer. */
-    sock_buf_rm(fd);
 
     LOG_INFO("disconnect client (fd: %d)", fd);
 }
@@ -694,31 +721,57 @@ void handle_get_request(int fd,
 /**
  * @brief Handle a CONNECT request.
  * 
- * @param fd FD for client socket.
+ * @param client_sock FD for client socket.
  * @param version String of HTTP version field in the request.
  * @param hostname Hostname to request.
  * @param port Port number to request.
  */
-void handle_connect_request(int fd, char* version, char* hostname, int port)
+void handle_connect_request(int client_sock,
+                           char* version,
+                           char* hostname,
+                           int port)
 {
     int server_sock;
 
-    /* Establish SSL connection with server. */
-    server_sock = ssl_connect_server(hostname, port, fd);
-    if (server_sock < 0) {
-        LOG_ERROR("ssl_connect_server");
-        return;
-    }
-    LOG_INFO("established SSL connection with %s:%d", hostname, port);
+    if (use_ssl) {
+        /* Establish SSL connection with server. */
+        server_sock = ssl_connect_server(hostname, port, client_sock);
+        if (server_sock < 0) {
+            LOG_ERROR("ssl_connect_server");
+            return;
+        }
+        LOG_INFO("established SSL connection with %s:%d", hostname, port);
 
-    reply_connection_established(fd, version);
+        reply_connection_established(client_sock, version);
 
-    /* Establish SSL connection with client. */
-    if (ssl_accept_client(fd, server_sock) < 0) {
-        LOG_ERROR("ssl_accept_client");
-        return;
+        /* Establish SSL connection with client. */
+        if (ssl_accept_client(client_sock, server_sock) < 0) {
+            LOG_ERROR("ssl_accept_client");
+            return;
+        }
+        LOG_INFO("established SSL connection with client (fd %d)", client_sock);
     }
-    LOG_INFO("established SSL connection with client (fd %d)", fd);
+    else {
+        struct sock_buf* client_buf = NULL;
+        struct sock_buf* server_buf = NULL;
+
+        /* Connect server. */
+        server_sock = connect_server(hostname, port, client_sock, NULL);
+        if (server_sock < 0) {
+            return;
+        }
+
+        /* Setup 2-way forwarding. */
+        client_buf = sock_buf_get(client_sock);
+        server_buf = sock_buf_get(server_sock);
+        client_buf->peer = server_sock;
+        client_buf->is_forward = 1;
+        server_buf->peer = client_sock;
+        server_buf->is_forward = 1;
+
+        /* Reply client with "Connection Established". */
+        reply_connection_established(client_sock, version);
+    }
 }
 
 /**
@@ -905,6 +958,7 @@ void handle_msg(int fd)
     int n; /* Byte size actually received or sent. */
     int is_client = 0; /* Whether this socket is for a client. */
     int is_ssl = 0; /* Whether this socket is one end of a SSL connection. */
+    int is_forward = 0; /* Whether simply forward data to its peer. */
 
     sock_buf = sock_buf_get(fd);
     if (sock_buf == NULL) {
@@ -912,6 +966,7 @@ void handle_msg(int fd)
         return;
     }
     is_client = sock_buf_is_client(fd);
+    is_forward = sock_buf_is_forward(fd);
     is_ssl = sock_buf_is_ssl(fd);
 
     /* Receive message. */
@@ -961,6 +1016,34 @@ void handle_msg(int fd)
     }
     #endif
 
+    /* Forward encrypted messages originated from a CONNECT method. */
+    if (is_forward) {
+        #if 0
+        LOG_INFO("forwarding encrypted data from fd %d to fd %d",
+                fd,
+                sock_buf->peer);
+        #endif
+        n = write(sock_buf->peer, buf, n);
+        if (n < 0) {
+            PLOG_ERROR("write");
+            if (is_client) {
+                disconnect_server(sock_buf->peer);
+            } else {
+                disconnect_client(sock_buf->peer);
+            }
+        }
+        if (n == 0) {
+            LOG_INFO("CONNECT socket is closed on the other side");
+            if (is_client) {
+                disconnect_server(sock_buf->peer);
+            }
+            else {
+                disconnect_client(sock_buf->peer);
+            }
+        }
+        return;
+    }
+
     /* Write received message into socket buffer. */
     if (sock_buf_buffer(fd, buf, n) < 0) {
         PLOG_ERROR("sock_buf_input");
@@ -979,11 +1062,17 @@ void handle_msg(int fd)
 int main(int argc, char** argv)
 {
     /* Parse cmd line args. */
-    if (argc != 2) {
-        fprintf(stderr, "usage: %s <port>", argv[0]);
+    if (argc != 2 && argc != 4) {
+        fprintf(stderr, "usage: %s <port> [<cert_file> <key_file>]", argv[0]);
         exit(EXIT_FAILURE);
     }
     listen_port = atoi(argv[1]);
+    if (argc == 4) {
+        use_ssl = 1; /* Raise flag for SSL interception. */
+        CERT_FILE = argv[2];
+        KEY_FILE = argv[3];
+        LOG_INFO("use SSL interception");
+    }
 
     init_proxy();
 
