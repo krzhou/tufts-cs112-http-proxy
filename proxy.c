@@ -775,6 +775,73 @@ void handle_connect_request(int client_sock,
 }
 
 /**
+ * @brief Handle other request by directly forwarding it to server.
+ * 
+ * @param fd FD for client socket.
+ * @param request Client request.
+ * @param request_len Byte size of client request.
+ * @param hostname Hostname in client request.
+ * @param port Port number in client request.
+ */
+void handle_other_request(int fd,
+                          char* request,
+                          int request_len,
+                          char* hostname,
+                          int port) {
+    struct sock_buf* client_buf = NULL;
+    struct sock_buf* server_buf = NULL;
+    int is_ssl = 0;
+    int n;
+    int server_sock;
+
+    client_buf = sock_buf_get(fd);
+    if (client_buf == NULL) {
+        LOG_ERROR("unknown socket %d", fd);
+        return;
+    }
+    is_ssl = sock_buf_is_ssl(fd);
+
+    /* Connect the requested server. */
+    if (is_ssl) {
+        server_sock = client_buf->peer;
+        server_buf = sock_buf_get(server_sock);
+        if (server_buf == NULL) {
+            LOG_ERROR("unknown socket %d", fd);
+            return;
+        }
+    }
+    else {
+        server_sock = connect_server(hostname, port, fd, NULL);
+        if (server_sock < 0) {
+            /* Fail to connect the request server. */
+            return;
+        }
+    }
+
+    /* Forward request to server. */
+    if (is_ssl) {
+        n = SSL_write(server_buf->ssl, request, request_len);
+    }
+    else {
+        n = write(server_sock, request, request_len);
+    }
+    if (n < 0) {
+        if (is_ssl) {
+            ERR_print_errors_fp(stderr);
+            LOG_ERROR("SSL_write");
+        }
+        else {
+            PLOG_ERROR("write");
+        }
+        disconnect_server(server_sock);
+    }
+    if (n == 0) {
+        LOG_ERROR("server socket is closed on the other side");
+        disconnect_server(server_sock);
+    }
+}
+
+/**
  * @brief Handle client request if the request inf buffer is completed.
  * 
  * @param fd FD for client socket.
@@ -841,8 +908,7 @@ void handle_client_request(int fd)
             handle_connect_request(fd, version, hostname, port);
         }
         else {
-            LOG_ERROR("unsupported HTTP method");
-            /* TODO: handle_other_request() */
+            handle_other_request(fd, request, request_len, hostname, port);
         }
 
         free(method);
