@@ -349,6 +349,7 @@ int parse_status_line(const char* line,
  * field.
  */
 void parse_response_head(const char* response,
+                         int response_len,
                          char** out_version,
                          int* out_status_code,
                          char** out_phrase,
@@ -356,7 +357,7 @@ void parse_response_head(const char* response,
                          char** out_cache_control)
 {
     const char* st = response; /* Start of the part to parse. */
-    const char* end = response + strlen(response); /* End of response. */
+    const char* end = response + response_len; /* End of response. */
     int len = 0; /* Byte size of the last parsed part. */
     char* name = NULL; /* Field name of a header line. */
     char* value = NULL; /* Field value of a header line. */

@@ -107,6 +107,7 @@ int parse_status_line(const char* line,
  * field.
  */
 void parse_response_head(const char* response,
+                         int response_len,
                          char** out_version,
                          int* out_status_code,
                          char** out_phrase,
