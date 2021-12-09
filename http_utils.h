@@ -74,6 +74,24 @@ void parse_request_head(const char* request,
 void parse_host_field(const char* host, char** out_hostname, int* out_port);
 
 /**
+ * @brief Parse the given HTTP status line and extract version, status code and 
+ * phrase fields.
+ *
+ * @param line String that starts with HTTP status line to parse. It may contain
+ * other contents after the status line.
+ * @param out_version Output pointer to a string copy of version field.
+ * @param out_status_code Output pointer to an integer copy of status code
+ * field.
+ * @param out_phrase Pointer to a string copy of phrase field.
+ * @return Length of status line including "\r\n"; -1 if the given request line
+ * is invalid.
+ */
+int parse_status_line(const char* line,
+                      char** out_version,
+                      int* out_status_code,
+                      char** out_phrase);
+
+/**
  * @brief Parse the given HTTP response, extract version, status code, phrase, 
  * content length and cache_control fields.
  *
