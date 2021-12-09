@@ -30,6 +30,7 @@
 #include <unistd.h>
 
 #define BUF_SIZE 8192
+#define CACHE_SIZE 100
 
 static int listen_port; /* Port that proxy listens on. */
 static int listen_sock; /* Listening socket of the proxy. */
@@ -166,7 +167,7 @@ void init_proxy(void)
     FD_SET(listen_sock, &active_fd_set);
 
     /* Init LRU cache. */
-    cache_init(10);
+    cache_init(CACHE_SIZE);
 
     /* Init socket buffer array. */
     sock_buf_arr_init();
