@@ -963,8 +963,22 @@ void handle_server_response(int fd)
         return;
     }
 
-    /* Cache response. */
-    if (cache_put(server_buf->key, response, response_len, max_age) == 0) {
+    /* Parse response. */
+    int status_code = -1;
+    char* version = NULL;
+    char* phrase = NULL;
+    parse_status_line(response,
+                      &version,
+                      &status_code,
+                      &phrase);
+    free(version);
+    version = NULL;
+    free(phrase);
+    phrase = NULL;
+
+    /* Cache response whose status is 200 OK. */
+    if (status_code == 200 &&
+        cache_put(server_buf->key, response, response_len, max_age) == 0) {
         LOG_ERROR("fail to cache server response");
     }
 
