@@ -873,6 +873,7 @@ void handle_client_request(int fd)
                                  &request_len) > 0) {
         /* Parse request. */
         parse_request_head(request, &method, &url, &version, &host);
+        port = -1;
         parse_host_field(host, &hostname, &port);
         LOG_INFO("parsed request:\n"
                  "- method: %s\n"
@@ -888,11 +889,13 @@ void handle_client_request(int fd)
 
         if (strcmp(method, "GET") == 0) {
             LOG_INFO("handle GET method");
-            if (is_ssl) {
-                port = 443; /* Default port for SSL link. */
-            }
-            else {
-                port = 80; /* Default port for HTTP. */
+            if (port < 0) {
+                if (is_ssl) {
+                    port = 443; /* Default port for SSL link. */
+                }
+                else {
+                    port = 80; /* Default port for HTTP. */
+                }
             }
             LOG_INFO("port: %d", port);
 
