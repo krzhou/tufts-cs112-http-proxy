@@ -77,6 +77,10 @@ integration-test: all
 	python3 test_proxy_default.py $(PORT) || exit 1
 	python3 test_proxy_ssl_interception.py $(PORT) || exit 1
 
+bench: all
+	python3 bench_proxy_default.py $(PORT)
+	python3 bench_proxy_ssl_interception.py $(PORT)
+
 # Compile step (.c files -> .o files)
 # To get *any* .o file, compile its .c file with the following rule.
 %.o:%.c $(INCLUDES)
