@@ -9,6 +9,15 @@
 *     Summary:
 *     Main driver for HTTP proxy.
 *
+*     Usage: ./proxy <port> [<cert> <key>]
+*     * <port> is the port that the proxy listens on.
+*     * <cert> is the certificate PEM file for SSL interception.
+*     * <key> is the private key PEM file for SSL interception.
+*     * If both <cert> and <key> are provided, the proxy will
+*     run in SSL interception mode.
+*     If neither of them provided, the proxy will in default
+*     mode without SSL interception.
+*
 **************************************************************/
 
 #include "cache.h"
@@ -32,7 +41,7 @@
 #define BUF_SIZE 8192
 #define CACHE_SIZE 100
 
-static int listen_port; /* Port that proxy listens on. */
+static int listen_port = 9999; /* Port that proxy listens on. */
 static int listen_sock; /* Listening socket of the proxy. */
 static fd_set active_fd_set; /* FD sets of all active sockets. */
 static fd_set read_fd_set;   /* FD sets of all sockets read to be read. */
@@ -1176,7 +1185,7 @@ int main(int argc, char** argv)
 {
     /* Parse cmd line args. */
     if (argc != 2 && argc != 4) {
-        fprintf(stderr, "usage: %s <port> [<cert_file> <key_file>]", argv[0]);
+        fprintf(stderr, "usage: %s <port> [<cert_file> <key_file>]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
     listen_port = atoi(argv[1]);
@@ -1184,7 +1193,10 @@ int main(int argc, char** argv)
         use_ssl = 1; /* Raise flag for SSL interception. */
         CERT_FILE = argv[2];
         KEY_FILE = argv[3];
-        LOG_INFO("use SSL interception");
+        LOG_INFO("run in SSL interception mode");
+    }
+    else {
+        LOG_INFO("run in default mode");
     }
 
     init_proxy();
