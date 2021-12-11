@@ -68,6 +68,11 @@ valgrind-test: all
     echo $$test && valgrind --leak-check=full ./$$test || exit 1; \
     done
 
+# `make integration-test` will build all executables, then run integration tests
+# using Python unittest.
+integration-test: all
+	python3 -m unittest
+
 # Compile step (.c files -> .o files)
 # To get *any* .o file, compile its .c file with the following rule.
 %.o:%.c $(INCLUDES)

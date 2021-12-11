@@ -62,3 +62,6 @@ test_cache
 # Submissions
 checkpoint1/
 checkpoint2/
+
+# Python
+__pycache__/
