@@ -285,7 +285,7 @@ int connect_server(const char *hostname,
     /* Get the server's DNS entry. */
     server = gethostbyname(hostname);
     if (server == NULL) {
-        PLOG_ERROR("no such host as %s\n", hostname);
+        PLOG_ERROR("no such host as %s", hostname);
         return -1;
     }
 
@@ -912,6 +912,7 @@ void handle_client_request(int fd)
             handle_connect_request(fd, version, hostname, port);
         }
         else {
+            LOG_INFO("handle %s method", method);
             handle_other_request(fd, request, request_len, hostname, port);
         }
 
