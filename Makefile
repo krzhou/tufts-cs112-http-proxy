@@ -12,6 +12,9 @@
 ###############################################################
 
 ############## Variables ###############
+# Port that the proxy listens on.
+PORT = 9160
+
 # Executables to build using "make all".
 EXECUTABLES = proxy
 
@@ -71,7 +74,8 @@ valgrind-test: all
 # `make integration-test` will build all executables, then run integration tests
 # using Python unittest.
 integration-test: all
-	python3 -m unittest
+	python3 test_proxy_default.py $(PORT) || exit 1
+	python3 test_proxy_ssl_interception.py $(PORT) || exit 1
 
 # Compile step (.c files -> .o files)
 # To get *any* .o file, compile its .c file with the following rule.

@@ -1,12 +1,33 @@
+###############################################################
+#
+#                   test_proxy_default.py
+#
+#     Final Project: High Performance HTTP Proxy
+#     Author:  Keren Zhou (kzhou), Ruiyuan Gu (rgu03)
+#     Date: 2021-12-10
+#
+#     Summary:
+#     Intergration tests for proxy running in SSL
+#     interception mode.
+#
+#     Usage: python3 test_proxy_ssl_interception.py [port]
+#     where [port] is the port that the proxy listens on,
+#     9999 by default.
+#
+###############################################################
+
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
 
 
-class TestProxyDefault(unittest.TestCase):
+class TestProxySslInterception(unittest.TestCase):
+    PORT = 9999  # Port that the proxy listens on.
+
     @classmethod
     def setUpClass(cls):
         # Setup a temp dir as the test dir.
@@ -30,8 +51,8 @@ class TestProxyDefault(unittest.TestCase):
         # Start proxy under the test dir.
         port = 9160
         cls.proxy_process = subprocess.Popen(
-            ["./proxy", str(port), "cert.pem", "key.pem"], cwd=cls.test_root)
-        cls.proxy_url = "localhost:" + str(port)
+            ["./proxy", str(cls.PORT), "cert.pem", "key.pem"], cwd=cls.test_root)
+        cls.proxy_url = "localhost:" + str(cls.PORT)
         time.sleep(1)  # Wait for proxy to start.
 
 
@@ -75,35 +96,54 @@ class TestProxyDefault(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
 
 
-    def test_get(self):
+    def test_get_01(self):
         # Medium sized website.
-        url ="http://www.cs.cmu.edu/~prs/bio.html"
-        name = "get-bio"
-        self.compare_curl_result(url, name)
+        self.compare_curl_result(
+            url="http://www.cs.cmu.edu/~prs/bio.html",
+            name="get-bio",
+        )
 
+
+    def test_get_02(self):
         # Website with a large picture.
-        url="http://www.cs.cmu.edu/~dga/dga-headshot.jpg"
-        name = "get-headshot"
-        self.compare_curl_result(url, name)
+        self.compare_curl_result(
+            url="http://www.cs.cmu.edu/~dga/dga-headshot.jpg",
+            name="get-headshot",
+        )
 
 
-    def test_get_chunked(self):
+    def test_get_chunked_01(self):
         ''' Test chunked transfer encoding. '''
-        url ="http://scp-wiki-cn.wikidot.com/"
-        name = "chunked-scp"
-        self.compare_curl_result(url, name)
+        self.compare_curl_result(
+            url="http://scp-wiki-cn.wikidot.com/",
+            name="chunked-scp",
+        )
 
 
-    def test_connect(self):
-        url ="https://www.eecs.tufts.edu"
-        name = "connect-eecs"
-        self.compare_curl_result(url, name)
+    def test_connect_01(self):
+        self.compare_curl_result(
+            url="https://www.eecs.tufts.edu",
+            name="connect-eecs",
+        )
 
-        self.compare_curl_result(url, name)
-        url ="https://www.tufts.edu"
-        name = "connect-tufts"
-        self.compare_curl_result(url, name)
 
-        url ="https://www.cplusplus.com"
-        name = "connect-cplusplus"
-        self.compare_curl_result(url, name)
+    def test_connect_02(self):
+        self.compare_curl_result(
+            url="https://www.tufts.edu",
+            name="connect-tufts",
+        )
+
+
+    def test_connect_03(self):
+        self.compare_curl_result(
+            url="https://www.cplusplus.com",
+            name="connect-cplusplus",
+        )
+
+
+if __name__ == "__main__":
+    # Parse command line arguments.
+    if (len(sys.argv) == 2):
+        TestProxySslInterception.PORT = int(sys.argv.pop())
+
+    unittest.main()
