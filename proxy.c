@@ -285,7 +285,7 @@ int connect_server(const char *hostname,
     /* Get the server's DNS entry. */
     server = gethostbyname(hostname);
     if (server == NULL) {
-        PLOG_ERROR("no such host as %s", hostname);
+        LOG_ERROR("cannot resolve host: %s", hostname);
         return -1;
     }
 
