@@ -942,7 +942,6 @@ void handle_server_response(int fd)
     int response_len = 0;
     int max_age = 3600;
     struct sock_buf* server_buf = NULL;
-    int n;
     int is_ssl = 0;
 
     server_buf = sock_buf_get(fd);
@@ -982,7 +981,34 @@ void handle_server_response(int fd)
         LOG_ERROR("fail to cache server response");
     }
 
-    /* Forward response to client. */
+    /* Disconnect server. */
+    if (!is_ssl) {
+        disconnect_server(fd);
+    }
+
+    free(response);
+    response = NULL;
+}
+
+/**
+ * @brief Fast forward partial server response to its client.
+ *
+ * @param server_sock FD for server socket.
+ * @param buf Response buffer.
+ * @param n Response byte size.
+ */
+void fast_forward(int server_sock, const char* buf, int n)
+{
+    struct sock_buf* server_buf = NULL;
+    int is_ssl = 0; /* Whether this socket is one end of a SSL connection. */
+
+    is_ssl = sock_buf_is_ssl(server_sock);
+    server_buf = sock_buf_get(server_sock);
+    if (server_buf == NULL) {
+        LOG_ERROR("unknown socket %d", server_sock);
+        return;
+    }
+
     if (is_ssl) {
         struct sock_buf* client_buf = NULL;
 
@@ -995,10 +1021,10 @@ void handle_server_response(int fd)
             LOG_ERROR("client is not in SSL connection");
             return;
         }
-        n = SSL_write(client_buf->ssl, response, response_len);
+        n = SSL_write(client_buf->ssl, buf, n);
     }
     else {
-        n = write(server_buf->peer, response, response_len);
+        n = write(server_buf->peer, buf, n);
     }
     if (n < 0) {
         if (is_ssl) {
@@ -1015,19 +1041,14 @@ void handle_server_response(int fd)
         disconnect_client(server_buf->peer);
     }
     else {
+        #if 0
         LOG_INFO("forward %d bytes from server (fd %d) to client (fd %d)",
-                response_len,
-                fd,
-                server_buf->peer);
+                    n,
+                    server_sock,
+                    server_buf->peer);
+        #endif
     }
 
-    /* Disconnect server. */
-    if (!is_ssl) {
-        disconnect_server(fd);
-    }
-
-    free(response);
-    response = NULL;
 }
 
 /**
@@ -1142,6 +1163,10 @@ void handle_msg(int fd)
          handle_client_request(fd);
     }
     else {
+        /* Fast forward partial server response to client. */
+        fast_forward(fd, buf, n);
+
+        /* Handle server response in its buffer. */
         handle_server_response(fd);
     }
 }
