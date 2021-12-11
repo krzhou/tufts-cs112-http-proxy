@@ -130,6 +130,24 @@ class TestProxyDefault(unittest.TestCase):
         )
 
 
+    def test_unreachable(self):
+        ''' Test with an unreachable website. '''
+        name = "unreachable"
+        url = "http://www.1234567890.com"
+        proxy_stdout = name + "-proxy-stdout.txt"
+        proxy_stderr = name + "-proxy-stderr.txt"
+        try:
+            subprocess.run(["curl", url, "--get", "--verbose",
+                "--proxy", self.proxy_url,
+                "--output", proxy_stdout,
+                "--stderr", proxy_stderr],
+                timeout=3,
+                cwd=self.test_root)
+        except subprocess.TimeoutExpired:
+            return
+        assertTrue(False)
+
+
 if __name__ == "__main__":
     # Parse command line arguments.
     if (len(sys.argv) == 2):
