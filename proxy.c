@@ -25,6 +25,7 @@
 #include "logger.h"
 #include "sock_buf.h"
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <openssl/err.h>
@@ -76,6 +77,9 @@ int init_listen_sock(int port)
                    sizeof(int)) < 0) {
         PLOG_FATAL("setsockopt");
     }
+
+    /* Set socket non-block. */
+    fcntl(sock, F_SETFL, O_NONBLOCK);
 
     /* Build the sock's internet address. */
     addr.sin_family = AF_INET; /* Use the Internet. */
