@@ -137,7 +137,6 @@ class TestProxyDefault(unittest.TestCase):
             "http://www.cs.cmu.edu/~prs/bio.html",
             "http://www.cs.cmu.edu/~dga/dga-headshot.jpg",
             "http://scp-wiki-cn.wikidot.com/",
-            "https://www.eecs.tufts.edu",
             "https://www.tufts.edu",
             "https://www.cplusplus.com",
         ]
