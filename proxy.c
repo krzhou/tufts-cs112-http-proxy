@@ -902,6 +902,7 @@ void handle_client_request(int fd)
 
         if (strcmp(method, "GET") == 0) {
             LOG_INFO("handle GET method");
+
             if (port < 0) {
                 if (is_ssl) {
                     port = 443; /* Default port for SSL link. */
@@ -926,6 +927,17 @@ void handle_client_request(int fd)
         }
         else {
             LOG_INFO("handle %s method", method);
+
+            if (port < 0) {
+                if (is_ssl) {
+                    port = 443; /* Default port for SSL link. */
+                }
+                else {
+                    port = 80; /* Default port for HTTP. */
+                }
+            }
+            LOG_INFO("port: %d", port);
+
             handle_other_request(fd, request, request_len, hostname, port);
         }
 
