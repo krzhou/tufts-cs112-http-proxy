@@ -62,6 +62,8 @@ class TestProxyDefault(unittest.TestCase):
         @param url URL of the website to access.
         @param name Head of output filename.
         '''
+        print("TEST {}".format(url))
+
         # Direct curl access.
         direct_stdout = name + "-direct-stdout.txt"
         direct_stderr = name + "-direct-stderr.txt"
@@ -84,6 +86,8 @@ class TestProxyDefault(unittest.TestCase):
             cwd=self.test_root)
         self.assertEqual(result.returncode, 0)
 
+        print("PASS")
+
 
     def test_get_01(self):
         # Medium sized website.
@@ -101,7 +105,7 @@ class TestProxyDefault(unittest.TestCase):
         )
 
 
-    @unittest.skip("broken")
+    @unittest.skip("broken")  # Response may vary each time.
     def test_get_chunked_01(self):
         ''' Test chunked transfer encoding. '''
         self.compare_curl_result(
@@ -109,7 +113,7 @@ class TestProxyDefault(unittest.TestCase):
             name="chunked-scp",
         )
 
-
+    @unittest.skip("broken")  # Need Tufts VPN to access.
     def test_connect_01(self):
         self.compare_curl_result(
             url="https://www.eecs.tufts.edu",
