@@ -925,7 +925,8 @@ void handle_client_request(int fd)
             handle_connect_request(fd, version, hostname, port);
         }
         else {
-            LOG_INFO("unsupported method: %s", method);
+            LOG_INFO("handle %s method", method);
+            handle_other_request(fd, request, request_len, hostname, port);
         }
 
         free(method);
