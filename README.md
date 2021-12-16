@@ -4,35 +4,33 @@ Creation date: 2021-11-10
 
 # Usage
 
-## Start proxy.
-Compile proxy.  
+## Compile.
 ```
 $ make  
 ```
-Run proxy on port 9160.  
+## Run proxy in default (SSL tunneling) mode.
+Run proxy on <port>.  
 ```
-$ ./proxy 9160  
+$ ./proxy <port>  
 ```
-The port number can be customized.  
+where &lt;port&gt; is the port number that the proxy listens on, which is customizable.  
 
-## Run curl test.  
-After running proxy on port 9160, we can run curl test.  
-If you use other port, you should modify curl_test.sh by setting variable proxy to 'localhost:<your_port>'.  
+## Run proxy in SSL interception mode.
 ```
-$ bash curl_test.sh  
+$ ./proxy <port> cert.pem key.pem  
 ```
-The curl tests compare the responses of direct access and via proxy by command line tool diff.  
-You can check curl outputs in *.txt files.  
-After curl test, you can remove all the *.txt files to cleanup.  
+where cert.pem and key.pem are certificate and private key files in PEM format. They are used in SSL interception.  
 
-## Run with browser.  
-After starting the proxy, set system proxy to "localhost:<port>" or use some browser extension.  
-Here, we use Chrome extension SwitchyOmega and set the proxy to "localhost:9160".  
+## Test proxy with curl.  
+TODO
+
+## Test proxy with browser.  
+TODO
 
 
 # Additional Functionalities
 * Support HTTP response using chunked transfer encoding.
-* SSL interception (partially implemented with best effort)
+* SSL interception (implemented with best effort)
 
 
 # Notes
