@@ -884,6 +884,10 @@ void handle_client_request(int fd)
                                  &(sock_buf->size),
                                  &request,
                                  &request_len) > 0) {
+
+        LOG_INFO("client request:\n"
+                 "%s", request);
+
         /* Parse request. */
         parse_request_head(request, &method, &url, &version, &host);
         port = -1;
