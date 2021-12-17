@@ -114,7 +114,7 @@ class TestProxyDefault(unittest.TestCase):
         "www.google.cn",
         "www.bbc.com",
         "www.force.com",
-        # "www.deloplen.com",  # Unreachable.
+        "www.deloplen.com",  # Unreachable.
         "www.salesforce.com",
         "www.pixnet.net",
         "www.ettoday.net",
