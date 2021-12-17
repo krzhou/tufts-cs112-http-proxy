@@ -65,3 +65,7 @@ checkpoint2/
 
 # Python
 __pycache__/
+
+# Benchmark outputs
+*.txt
+*.csv
