@@ -28,6 +28,7 @@ import unittest
 class TestProxyDefault(unittest.TestCase):
     CSV_format = False  # Whether to print in CSV format.
     PORT = 9999  # Port that the proxy listens on.
+    TIMEOUT = 10  # Timeout for website access.
     URLS = [
         "www.google.com",
         "www.youtube.com",
@@ -185,7 +186,7 @@ class TestProxyDefault(unittest.TestCase):
         @param url URL of the website to access.
         '''
         # E.g. curl -so /dev/null "www.google.com" -w '%{size_download}\n'
-        stdout_path = "pagesize.txt"
+        stdout_path = os.path.join(self.test_root, "pagesize.txt")
         stdout_file = open(stdout_path, "w")
         subprocess.run(["curl", url, "-so", "/dev/null", "-w", "%{size_download}\n"],
                        stdout=stdout_file,
@@ -214,7 +215,7 @@ class TestProxyDefault(unittest.TestCase):
                 "--proxy", self.proxy_url,
                 "--output", stdout_file,
                 "--stderr", stderr_file],
-                timeout = 20,
+                timeout = self.TIMEOUT,
                 cwd=self.test_root)
             proxy_uncached_elapsed = time.time() - proxy_uncached_start
         except subprocess.TimeoutExpired:
@@ -231,7 +232,7 @@ class TestProxyDefault(unittest.TestCase):
                 "--proxy", self.proxy_url,
                 "--output", stdout_file,
                 "--stderr", stderr_file],
-                timeout = 20,
+                timeout = self.TIMEOUT,
                 cwd=self.test_root)
             proxy_cached_elapsed = time.time() - proxy_cached_start
         except subprocess.TimeoutExpired:
@@ -247,7 +248,7 @@ class TestProxyDefault(unittest.TestCase):
             subprocess.run(["curl", url, "--get", "--verbose",
                 "--output", stdout_file,
                 "--stderr", stderr_file],
-                timeout = 20,
+                timeout = self.TIMEOUT,
                 cwd=self.test_root)
             direct_elapsed = time.time() - direct_start
         except subprocess.TimeoutExpired:
