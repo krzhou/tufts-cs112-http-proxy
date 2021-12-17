@@ -144,8 +144,8 @@ void clear_ssl(void)
     /* SSL context for this proxy. */
     SSL_CTX_free(ssl_ctx);
 
-    /* Free SSL_COMP_get_compression_methods() called by SSL_library_init(). */
-    sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
+    // /* Free SSL_COMP_get_compression_methods() called by SSL_library_init(). */
+    // sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
 
     /* Remove all cipher and digest algorithms from the table. */
     EVP_cleanup();
@@ -885,8 +885,10 @@ void handle_client_request(int fd)
                                  &request,
                                  &request_len) > 0) {
 
+        fprintf(stderr, "================\n");
         LOG_INFO("client request:\n"
                  "%s", request);
+        fprintf(stderr, "================\n");
 
         /* Parse request. */
         parse_request_head(request, &method, &url, &version, &host);
