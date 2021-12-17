@@ -144,7 +144,6 @@ int sock_buf_rm(int fd)
     if (sock_buf_arr[fd]->ssl != NULL) {
         SSL_shutdown(sock_buf_arr[fd]->ssl);
         SSL_free(sock_buf_arr[fd]->ssl);
-        sock_buf_arr[fd] = NULL;
     }
     free(sock_buf_arr[fd]);
     sock_buf_arr[fd] = NULL;
