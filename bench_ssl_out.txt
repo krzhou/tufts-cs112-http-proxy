@@ -1,0 +1,489 @@
+==== proxy bench mark for SSL interception mode ====
+repo_root: 
+test_root: /tmp/tmpuqvkxaa4
+http://www.cs.cmu.edu/~prs/bio.html
+uncached proxy elapsed: 0.115 s
+cached   proxy elapsed: 0.008 s
+direct         elapsed: 0.115 s
+uncached proxy gain   : 0.000 s
+uncached proxy gain%  : 0.065% s
+cached   proxy gain   : -0.107 s
+cached   proxy gain%  : -92.919% s
+page size             : 8458 Bytes
+
+http://www.cs.cmu.edu/~dga/dga-headshot.jpg
+uncached proxy elapsed: 4.782 s
+cached   proxy elapsed: 0.008 s
+direct         elapsed: 3.576 s
+uncached proxy gain   : 1.205 s
+uncached proxy gain%  : 33.703% s
+cached   proxy gain   : -3.568 s
+cached   proxy gain%  : -99.774% s
+page size             : 2925958 Bytes
+
+http://info.cern.ch
+uncached proxy elapsed: 0.215 s
+cached   proxy elapsed: 0.008 s
+direct         elapsed: 0.215 s
+uncached proxy gain   : 0.000 s
+uncached proxy gain%  : 0.069% s
+cached   proxy gain   : -0.207 s
+cached   proxy gain%  : -96.270% s
+page size             : 646 Bytes
+
+http://brightbeautifulshiningsunrise.neverssl.com/online
+uncached proxy elapsed: 0.115 s
+cached   proxy elapsed: 0.008 s
+direct         elapsed: 0.065 s
+uncached proxy gain   : 0.050 s
+uncached proxy gain%  : 77.079% s
+cached   proxy gain   : -0.056 s
+cached   proxy gain%  : -87.291% s
+page size             : 2238 Bytes
+
+http://www.testingmcafeesites.com/
+uncached proxy elapsed: 0.366 s
+cached   proxy elapsed: 0.008 s
+direct         elapsed: 0.265 s
+uncached proxy gain   : 0.100 s
+uncached proxy gain%  : 37.877% s
+cached   proxy gain   : -0.257 s
+cached   proxy gain%  : -96.886% s
+page size             : 28634 Bytes
+
+http://www.softwareqatest.com
+uncached proxy elapsed: 0.065 s
+cached   proxy elapsed: 0.008 s
+direct         elapsed: 0.115 s
+uncached proxy gain   : -0.050 s
+uncached proxy gain%  : -43.689% s
+cached   proxy gain   : -0.107 s
+cached   proxy gain%  : -92.944% s
+page size             : 10445 Bytes
+
+http://www.http2demo.io/
+uncached proxy elapsed: 0.266 s
+cached   proxy elapsed: 0.008 s
+direct         elapsed: 0.265 s
+uncached proxy gain   : 0.000 s
+uncached proxy gain%  : 0.083% s
+cached   proxy gain   : -0.257 s
+cached   proxy gain%  : -96.919% s
+page size             : 105216 Bytes
+
+http://scp-wiki-cn.wikidot.com/
+uncached proxy elapsed: 0.115 s
+cached   proxy elapsed: 0.008 s
+direct         elapsed: 0.115 s
+uncached proxy gain   : -0.000 s
+uncached proxy gain%  : -0.104% s
+cached   proxy gain   : -0.107 s
+cached   proxy gain%  : -92.852% s
+page size             : 68721 Bytes
+
+http://scp-jp.wikidot.com/
+uncached proxy elapsed: 0.165 s
+cached   proxy elapsed: 0.008 s
+direct         elapsed: 0.115 s
+uncached proxy gain   : 0.050 s
+uncached proxy gain%  : 43.801% s
+cached   proxy gain   : -0.107 s
+cached   proxy gain%  : -92.857% s
+page size             : 85275 Bytes
+
+https://www.google.com/
+uncached proxy elapsed: 0.215 s
+cached   proxy elapsed: 0.215 s
+direct         elapsed: 0.165 s
+uncached proxy gain   : 0.050 s
+uncached proxy gain%  : 30.535% s
+cached   proxy gain   : 0.050 s
+cached   proxy gain%  : 30.450% s
+page size             : 15278 Bytes
+
+https://www.youtube.com/
+uncached proxy elapsed: 0.416 s
+cached   proxy elapsed: 0.366 s
+direct         elapsed: 0.416 s
+uncached proxy gain   : 0.000 s
+uncached proxy gain%  : 0.028% s
+cached   proxy gain   : -0.050 s
+cached   proxy gain%  : -12.011% s
+page size             : 697750 Bytes
+
+https://www.facebook.com/
+uncached proxy elapsed: 0.215 s
+cached   proxy elapsed: 0.032 s
+direct         elapsed: 0.165 s
+uncached proxy gain   : 0.050 s
+uncached proxy gain%  : 30.553% s
+cached   proxy gain   : -0.133 s
+cached   proxy gain%  : -80.422% s
+page size             : 82925 Bytes
+
+https://twitter.com/
+fail to access https://twitter.com/
+
+https://www.instagram.com/
+uncached proxy elapsed: 0.616 s
+cached   proxy elapsed: 0.032 s
+direct         elapsed: 0.616 s
+uncached proxy gain   : 0.000 s
+uncached proxy gain%  : 0.008% s
+cached   proxy gain   : -0.584 s
+cached   proxy gain%  : -94.756% s
+page size             : 70011 Bytes
+
+https://www.baidu.com/
+uncached proxy elapsed: 0.566 s
+cached   proxy elapsed: 0.265 s
+direct         elapsed: 0.516 s
+uncached proxy gain   : 0.050 s
+uncached proxy gain%  : 9.753% s
+cached   proxy gain   : -0.251 s
+cached   proxy gain%  : -48.620% s
+page size             : 2443 Bytes
+
+https://www.wikipedia.org/
+uncached proxy elapsed: 0.265 s
+cached   proxy elapsed: 0.064 s
+direct         elapsed: 0.115 s
+uncached proxy gain   : 0.151 s
+uncached proxy gain%  : 131.408% s
+cached   proxy gain   : -0.050 s
+cached   proxy gain%  : -43.767% s
+page size             : 79455 Bytes
+
+https://yandex.ru/
+uncached proxy elapsed: 0.516 s
+cached   proxy elapsed: 0.466 s
+direct         elapsed: 0.365 s
+uncached proxy gain   : 0.151 s
+uncached proxy gain%  : 41.270% s
+cached   proxy gain   : 0.100 s
+cached   proxy gain%  : 27.502% s
+page size             : 0 Bytes
+
+https://www.yahoo.com/
+uncached proxy elapsed: 0.816 s
+cached   proxy elapsed: 0.064 s
+direct         elapsed: 0.817 s
+uncached proxy gain   : -0.000 s
+uncached proxy gain%  : -0.021% s
+cached   proxy gain   : -0.752 s
+cached   proxy gain%  : -92.104% s
+page size             : 623511 Bytes
+
+https://www.xvideos.com/
+uncached proxy elapsed: 0.917 s
+cached   proxy elapsed: 0.315 s
+direct         elapsed: 0.717 s
+uncached proxy gain   : 0.200 s
+uncached proxy gain%  : 27.865% s
+cached   proxy gain   : -0.402 s
+cached   proxy gain%  : -56.019% s
+page size             : 112267 Bytes
+
+https://www.whatsapp.com/
+uncached proxy elapsed: 0.366 s
+cached   proxy elapsed: 0.033 s
+direct         elapsed: 0.416 s
+uncached proxy gain   : -0.050 s
+uncached proxy gain%  : -12.025% s
+cached   proxy gain   : -0.383 s
+cached   proxy gain%  : -92.174% s
+page size             : 164794 Bytes
+
+https://www.amazon.com/
+uncached proxy elapsed: 0.115 s
+cached   proxy elapsed: 0.115 s
+direct         elapsed: 0.115 s
+uncached proxy gain   : 0.000 s
+uncached proxy gain%  : 0.057% s
+cached   proxy gain   : 0.000 s
+cached   proxy gain%  : 0.120% s
+page size             : 1203 Bytes
+
+https://www.xnxx.com/
+uncached proxy elapsed: 10.556 s
+cached   proxy elapsed: 0.265 s
+direct         elapsed: 0.617 s
+uncached proxy gain   : 9.939 s
+uncached proxy gain%  : 1611.817% s
+cached   proxy gain   : -0.351 s
+cached   proxy gain%  : -56.993% s
+page size             : 96455 Bytes
+
+https://www.netflix.com/
+fail to access https://www.netflix.com/
+
+https://outlook.live.com/owa/
+uncached proxy elapsed: 0.316 s
+cached   proxy elapsed: 0.115 s
+direct         elapsed: 0.215 s
+uncached proxy gain   : 0.101 s
+uncached proxy gain%  : 46.815% s
+cached   proxy gain   : -0.100 s
+cached   proxy gain%  : -46.664% s
+page size             : 37064 Bytes
+
+https://www.yahoo.co.jp/
+uncached proxy elapsed: 1.069 s
+cached   proxy elapsed: 0.416 s
+direct         elapsed: 0.968 s
+uncached proxy gain   : 0.101 s
+uncached proxy gain%  : 10.383% s
+cached   proxy gain   : -0.552 s
+cached   proxy gain%  : -57.031% s
+page size             : 40045 Bytes
+
+https://www.pornhub.com/
+fail to access https://www.pornhub.com/
+
+https://zoom.us/
+uncached proxy elapsed: 0.215 s
+cached   proxy elapsed: 0.215 s
+direct         elapsed: 0.165 s
+uncached proxy gain   : 0.050 s
+uncached proxy gain%  : 30.360% s
+cached   proxy gain   : 0.050 s
+cached   proxy gain%  : 30.245% s
+page size             : 102518 Bytes
+
+https://www.office.com/
+uncached proxy elapsed: 0.266 s
+cached   proxy elapsed: 0.065 s
+direct         elapsed: 0.265 s
+uncached proxy gain   : 0.000 s
+uncached proxy gain%  : 0.027% s
+cached   proxy gain   : -0.201 s
+cached   proxy gain%  : -75.620% s
+page size             : 119424 Bytes
+
+https://www.reddit.com/
+fail to access https://www.reddit.com/
+
+https://vk.com/
+uncached proxy elapsed: 0.517 s
+cached   proxy elapsed: 0.516 s
+direct         elapsed: 0.416 s
+uncached proxy gain   : 0.101 s
+uncached proxy gain%  : 24.237% s
+cached   proxy gain   : 0.101 s
+cached   proxy gain%  : 24.197% s
+page size             : 0 Bytes
+
+https://www.tiktok.com/
+uncached proxy elapsed: 0.265 s
+cached   proxy elapsed: 0.115 s
+direct         elapsed: 0.115 s
+uncached proxy gain   : 0.151 s
+uncached proxy gain%  : 130.994% s
+cached   proxy gain   : -0.000 s
+cached   proxy gain%  : -0.178% s
+page size             : 0 Bytes
+
+https://xhamster.com/
+uncached proxy elapsed: 0.516 s
+cached   proxy elapsed: 0.065 s
+direct         elapsed: 0.466 s
+uncached proxy gain   : 0.050 s
+uncached proxy gain%  : 10.764% s
+cached   proxy gain   : -0.402 s
+cached   proxy gain%  : -86.149% s
+page size             : 192308 Bytes
+
+https://www.linkedin.com/
+uncached proxy elapsed: 0.366 s
+cached   proxy elapsed: 0.065 s
+direct         elapsed: 0.566 s
+uncached proxy gain   : -0.201 s
+uncached proxy gain%  : -35.423% s
+cached   proxy gain   : -0.502 s
+cached   proxy gain%  : -88.560% s
+page size             : 107246 Bytes
+
+https://discord.com/
+uncached proxy elapsed: 0.215 s
+cached   proxy elapsed: 0.065 s
+direct         elapsed: 0.165 s
+uncached proxy gain   : 0.050 s
+uncached proxy gain%  : 30.348% s
+cached   proxy gain   : -0.100 s
+cached   proxy gain%  : -60.722% s
+page size             : 41501 Bytes
+
+https://www.naver.com/
+fail to access https://www.naver.com/
+
+https://www.twitch.tv/
+fail to access https://www.twitch.tv/
+
+https://www.bing.com/
+uncached proxy elapsed: 0.265 s
+cached   proxy elapsed: 0.064 s
+direct         elapsed: 0.165 s
+uncached proxy gain   : 0.100 s
+uncached proxy gain%  : 60.566% s
+cached   proxy gain   : -0.101 s
+cached   proxy gain%  : -60.996% s
+page size             : 88862 Bytes
+
+https://www.microsoft.com/en-us/
+fail to access https://www.microsoft.com/en-us/
+
+https://mail.ru/
+uncached proxy elapsed: 3.477 s
+cached   proxy elapsed: 0.466 s
+direct         elapsed: 3.778 s
+uncached proxy gain   : -0.301 s
+uncached proxy gain%  : -7.964% s
+cached   proxy gain   : -3.312 s
+cached   proxy gain%  : -87.655% s
+page size             : 310312 Bytes
+
+https://www.roblox.com/
+fail to access https://www.roblox.com/
+
+https://duckduckgo.com/
+uncached proxy elapsed: 0.115 s
+cached   proxy elapsed: 0.115 s
+direct         elapsed: 0.115 s
+uncached proxy gain   : 0.000 s
+uncached proxy gain%  : 0.135% s
+cached   proxy gain   : -0.000 s
+cached   proxy gain%  : -0.051% s
+page size             : 5722 Bytes
+
+https://www.pinterest.com/
+fail to access https://www.pinterest.com/
+
+https://www.samsung.com/us/
+fail to access https://www.samsung.com/us/
+
+https://www.qq.com/
+fail to access https://www.qq.com/
+
+https://www.msn.com/
+uncached proxy elapsed: 0.215 s
+cached   proxy elapsed: 0.065 s
+direct         elapsed: 0.767 s
+uncached proxy gain   : -0.552 s
+uncached proxy gain%  : -71.965% s
+cached   proxy gain   : -0.703 s
+cached   proxy gain%  : -91.574% s
+page size             : 50954 Bytes
+
+https://news.yahoo.co.jp/
+uncached proxy elapsed: 2.223 s
+cached   proxy elapsed: 0.416 s
+direct         elapsed: 2.374 s
+uncached proxy gain   : -0.151 s
+uncached proxy gain%  : -6.359% s
+cached   proxy gain   : -1.958 s
+cached   proxy gain%  : -82.472% s
+page size             : 427193 Bytes
+
+https://www.bilibili.com/
+uncached proxy elapsed: 0.818 s
+cached   proxy elapsed: 0.667 s
+direct         elapsed: 1.319 s
+uncached proxy gain   : -0.501 s
+uncached proxy gain%  : -38.003% s
+cached   proxy gain   : -0.652 s
+cached   proxy gain%  : -49.421% s
+page size             : 102292 Bytes
+
+https://www.ebay.com/
+fail to access https://www.ebay.com/
+
+https://www.google.com.br/
+uncached proxy elapsed: 0.215 s
+cached   proxy elapsed: 0.215 s
+direct         elapsed: 0.215 s
+uncached proxy gain   : 0.000 s
+uncached proxy gain%  : 0.003% s
+cached   proxy gain   : 0.000 s
+cached   proxy gain%  : 0.044% s
+page size             : 16054 Bytes
+
+https://www.globo.com/
+uncached proxy elapsed: 4.330 s
+cached   proxy elapsed: 0.316 s
+direct         elapsed: 3.578 s
+uncached proxy gain   : 0.753 s
+uncached proxy gain%  : 21.036% s
+cached   proxy gain   : -3.262 s
+cached   proxy gain%  : -91.170% s
+page size             : 649526 Bytes
+
+https://www.fandom.com/
+fail to access https://www.fandom.com/
+
+https://ok.ru/
+uncached proxy elapsed: 1.219 s
+cached   proxy elapsed: 0.466 s
+direct         elapsed: 1.069 s
+uncached proxy gain   : 0.150 s
+uncached proxy gain%  : 14.047% s
+cached   proxy gain   : -0.603 s
+cached   proxy gain%  : -56.384% s
+page size             : 200022 Bytes
+
+https://docomo.ne.jp/
+uncached proxy elapsed: 0.667 s
+cached   proxy elapsed: 0.667 s
+direct         elapsed: 0.667 s
+uncached proxy gain   : -0.000 s
+uncached proxy gain%  : -0.028% s
+cached   proxy gain   : -0.000 s
+cached   proxy gain%  : -0.053% s
+page size             : 9 Bytes
+
+UNREACHABLE
+fail to access UNREACHABLE
+
+https://www.bbc.com/
+uncached proxy elapsed: 0.165 s
+cached   proxy elapsed: 0.032 s
+direct         elapsed: 0.165 s
+uncached proxy gain   : -0.000 s
+uncached proxy gain%  : -0.002% s
+cached   proxy gain   : -0.133 s
+cached   proxy gain%  : -80.325% s
+page size             : 247900 Bytes
+
+https://www.accuweather.com/
+fail to access https://www.accuweather.com/
+
+https://www.amazon.co.jp/
+uncached proxy elapsed: 0.316 s
+cached   proxy elapsed: 0.617 s
+direct         elapsed: 0.617 s
+uncached proxy gain   : -0.301 s
+uncached proxy gain%  : -48.817% s
+cached   proxy gain   : 0.000 s
+cached   proxy gain%  : 0.047% s
+page size             : 75166 Bytes
+
+https://www.walmart.com/
+uncached proxy elapsed: 0.215 s
+cached   proxy elapsed: 0.215 s
+direct         elapsed: 0.165 s
+uncached proxy gain   : 0.050 s
+uncached proxy gain%  : 30.299% s
+cached   proxy gain   : 0.050 s
+cached   proxy gain%  : 30.409% s
+page size             : 21 Bytes
+
+==== Summary ====
+uncached proxy elapsed: 39.766 s
+cached   proxy elapsed: 8.264 s
+direct         elapsed: 28.220 s
+uncached proxy gain   : 11.546 s
+uncached proxy gain%  : 40.916% s
+cached   proxy gain   : -19.955 s
+cached   proxy gain%  : -70.715% s
+unreachable websites  : 15
+
+==== benchmark end ====

@@ -1,0 +1,77 @@
+==== proxy bench mark for SSL interception mode ====
+repo_root: 
+test_root: /tmp/tmpnvl2n47b
+0.115, 0.008, 0.115, 8458
+3.427, 0.016, 2.824, 2925958
+0.215, 0.008, 0.215, 646
+0.115, 0.008, 0.065, 2238
+0.416, 0.008, 0.416, 28634
+0.065, 0.008, 0.065, 10445
+0.466, 0.008, 0.365, 105216
+0.115, 0.008, 0.165, 68631
+0.466, 0.008, 0.415, 85275
+0.165, 0.215, 0.115, 15321
+0.416, 0.366, 0.415, 594691
+0.215, 0.032, 0.215, 82922
+fail to access https://twitter.com/
+
+0.265, 0.032, 1.218, 69859
+0.516, 0.266, 0.516, 2443
+0.215, 0.065, 0.165, 79455
+0.516, 0.466, 0.366, 0
+0.717, 0.064, 0.666, 623540
+0.867, 0.265, 0.817, 111621
+0.366, 0.032, 1.169, 164939
+0.115, 0.115, 0.065, 2671
+0.817, 0.316, 0.617, 96455
+fail to access https://www.netflix.com/
+
+0.265, 0.115, 0.265, 37064
+1.168, 0.516, 1.018, 40047
+fail to access https://www.pornhub.com/
+
+0.265, 0.215, 0.165, 102518
+0.265, 0.064, 0.115, 119459
+fail to access https://www.reddit.com/
+
+0.617, 0.516, 0.467, 0
+0.265, 0.115, 0.115, 0
+0.566, 0.065, 0.567, 189747
+0.316, 0.033, 0.265, 109236
+0.215, 0.065, 0.165, 41533
+fail to access https://www.naver.com/
+
+fail to access https://www.twitch.tv/
+
+0.215, 0.065, 0.165, 89021
+fail to access https://www.microsoft.com/en-us/
+
+5.385, 0.617, 2.373, 310484
+fail to access https://www.roblox.com/
+
+0.165, 0.065, 0.115, 5722
+fail to access https://www.pinterest.com/
+
+fail to access https://www.samsung.com/us/
+
+fail to access https://www.qq.com/
+
+0.215, 0.064, 0.215, 50839
+2.524, 0.366, 2.323, 426859
+1.320, 0.165, 1.270, 96291
+fail to access https://www.ebay.com/
+
+0.215, 0.215, 0.165, 16065
+3.929, 0.315, 3.025, 649217
+fail to access https://www.fandom.com/
+
+1.169, 0.466, 1.319, 152425
+0.667, 0.667, 0.818, 9
+fail to access UNREACHABLE
+
+0.165, 0.033, 0.165, 247952
+fail to access https://www.accuweather.com/
+
+0.617, 0.065, 0.516, 76860
+0.616, 0.365, 0.516, 21
+==== benchmark end ====
