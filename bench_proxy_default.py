@@ -27,108 +27,69 @@ import unittest
 class TestProxyDefault(unittest.TestCase):
     CSV_format = False  # Whether to print in CSV format.
     PORT = 9999  # Port that the proxy listens on.
-    TIMEOUT = 10  # Timeout for website access.
+    TIMEOUT = 20  # Timeout for website access.
     URLS = [
-        "www.google.com",
-        "www.youtube.com",
-        "www.facebook.com",
-        "www.baidu.com",
-        "www.wikipedia.org",
-        "www.qq.com",
-        "www.taobao.com",
-        "www.yahoo.com",
-        "www.tmall.com",
-        "www.amazon.com",
-        "www.twitter.com",
-        "www.sohu.com",
-        "www.live.com",
-        "www.jd.com",
-        "www.vk.com",
-        "www.instagram.com",
-        "www.sina.com.cn",
-        "www.weibo.com",
-        "www.reddit.com",
-        "login.tmall.com",
-        "www.360.cn",
-        "www.yandex.ru",
-        "www.linkedin.com",
-        "www.blogspot.com",
-        "www.netflix.com",
-        "www.twitch.tv",
-        "www.whatsapp.com",
-        "www.pornhub.com",
-        "www.yahoo.co.jp",
-        "www.csdn.net",
-        "www.alipay.com",
-        "www.microsoftonline.com",  # Unreachable
-        "www.naver.com",
-        "pages.tmall.com",
-        "www.microsoft.com",
-        "www.livejasmin.com",
-        "www.aliexpress.com",
-        "www.bing.com",
-        "www.ebay.com",
-        "www.github.com",
-        "www.tribunnews.com",
-        "www.google.com.hk",
-        "www.amazon.co.jp",
-        "www.stackoverflow.com",
-        "www.mail.ru",
-        "www.okezone.com",
-        "www.google.co.in",
-        "www.office.com",
-        "www.xvideos.com",
-        "www.msn.com",
-        "www.paypal.com",
-        "www.bilibili.com",
-        "www.hao123.com",
-        "www.imdb.com",
-        "www.t.co",
-        "www.fandom.com",
-        "www.imgur.com",
-        "www.xhamster.com",
-        "www.163.com",
-        "www.wordpress.com",
-        "www.apple.com",
-        "www.soso.com",
-        "www.google.com.br",
-        "www.booking.com",
-        "www.xinhuanet.com",
-        "www.adobe.com",
-        "www.pinterest.com",
-        "www.amazon.de",
-        "www.amazon.in",
-        "www.dropbox.com",
-        "www.bongacams.com",
-        "www.google.co.jp",
-        "www.babytree.com",
-        "detail.tmall.com",
-        "www.tumblr.com",
-        "www.google.ru",
-        "www.google.fr",
-        "www.google.de",
-        "www.so.com",
-        "www.cnblogs.com",
-        "www.quora.com",
-        "www.amazon.co.uk",
-        "www.detik.com",
-        "www.google.cn",
-        "www.bbc.com",
-        "www.force.com",
-        "www.deloplen.com",  # Unreachable.
-        "www.salesforce.com",
-        "www.pixnet.net",
-        "www.ettoday.net",
-        "www.cnn.com",
-        "www.onlinesbi.com",
-        "www.roblox.com",
-        "www.aparat.com",
-        "www.thestartmagazine.com",
-        "www.bbc.co.uk",
-        "www.google.es",
-        "www.amazonaws.com",
-        "www.google.it",
-        "www.tianya.cn",
+        # HTTP websites.
+        "http://www.cs.cmu.edu/~prs/bio.html",
+        "http://www.cs.cmu.edu/~dga/dga-headshot.jpg",
+        "http://info.cern.ch",
+        "http://brightbeautifulshiningsunrise.neverssl.com/online",
+        "http://www.testingmcafeesites.com/",
+        "http://www.softwareqatest.com",
+        "http://www.http2demo.io/",
+        "http://scp-wiki-cn.wikidot.com/",
+        "http://scp-jp.wikidot.com/",
+
+        # Top 50 websites.
+       "https://www.google.com/",
+       "https://www.youtube.com/",
+       "https://www.facebook.com/",
+       "https://twitter.com/",
+       "https://www.instagram.com/",
+       "https://www.baidu.com/",
+       "https://www.wikipedia.org/",
+       "https://yandex.ru/",
+       "https://www.yahoo.com/",
+       "https://www.xvideos.com/",
+       "https://www.whatsapp.com/",
+       "https://www.amazon.com/",
+       "https://www.xnxx.com/",
+       "https://www.netflix.com/",
+       "https://outlook.live.com/owa/",
+       "https://www.yahoo.co.jp/",
+       "https://www.pornhub.com/",
+       "https://zoom.us/",
+       "https://www.office.com/",
+       "https://www.reddit.com/",
+       "https://vk.com/",
+       "https://www.tiktok.com/",
+       "https://xhamster.com/",
+       "https://www.linkedin.com/",
+       "https://discord.com/",
+       "https://www.naver.com/",
+       "https://www.twitch.tv/",
+       "https://www.bing.com/",
+       "https://www.microsoft.com/en-us/",
+       "https://mail.ru/",
+       "https://www.roblox.com/",
+       "https://duckduckgo.com/",
+       "https://www.pinterest.com/",
+       "https://www.samsung.com/us/",
+       "https://www.qq.com/",
+       "https://www.msn.com/",
+       "https://news.yahoo.co.jp/",
+       "https://www.bilibili.com/",
+       "https://www.ebay.com/",
+       "https://www.google.com.br/",
+       "https://www.globo.com/",
+       "https://www.fandom.com/",
+       "https://ok.ru/",
+       "https://docomo.ne.jp/",
+       "realsrv.com",  # Unreachable.
+       "https://www.bbc.com/",
+       "https://www.accuweather.com/",
+       "https://www.amazon.co.jp/",
+       "https://www.walmart.com/",
     ]  # URLs for benchmark.
 
 
@@ -210,8 +171,8 @@ class TestProxyDefault(unittest.TestCase):
             proxy_uncached_elapsed = time.time() - proxy_uncached_start
         except subprocess.TimeoutExpired:
             print("fail to access {}".format(url))
-            return -1, -1, -1
             print()
+            return -1, -1, -1
 
         # Cached proxy.
         try:
@@ -227,8 +188,8 @@ class TestProxyDefault(unittest.TestCase):
             proxy_cached_elapsed = time.time() - proxy_cached_start
         except subprocess.TimeoutExpired:
             print("fail to access {}".format(url))
-            return -1, -1, -1
             print()
+            return -1, -1, -1
 
         # Direct curl access.
         try:
@@ -243,8 +204,8 @@ class TestProxyDefault(unittest.TestCase):
             direct_elapsed = time.time() - direct_start
         except subprocess.TimeoutExpired:
             print("fail to access {}".format(url))
-            return -1, -1, -1
             print()
+            return -1, -1, -1
         
         if self.CSV_format:
             # CSV format.
